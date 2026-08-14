@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Requests\Admin;
 
+use App\Models\Teacher;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -19,7 +20,7 @@ final class UpdateTeacherRequest extends FormRequest
      */
     public function rules(): array
     {
-        /** @var \App\Models\Teacher $teacher */
+        /** @var Teacher $teacher */
         $teacher = $this->route('teacher');
 
         return [
@@ -28,7 +29,7 @@ final class UpdateTeacherRequest extends FormRequest
                 'required',
                 'email',
                 'max:255',
-                Rule::unique('users', 'email')->ignore($teacher->user_id),
+                Rule::unique('users', 'email')->ignore($teacher?->user_id),
             ],
             'phone' => ['nullable', 'string', 'max:30'],
             'password' => ['nullable', 'string', 'min:8'],
@@ -36,7 +37,7 @@ final class UpdateTeacherRequest extends FormRequest
                 'required',
                 'string',
                 'max:50',
-                Rule::unique('teachers', 'employee_id')->ignore($teacher->id),
+                Rule::unique('teachers', 'employee_id')->ignore($teacher?->id),
             ],
             'designation' => ['nullable', 'string', 'max:255'],
             'department_id' => ['required', 'integer', 'exists:departments,id'],
