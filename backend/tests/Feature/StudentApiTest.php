@@ -260,14 +260,36 @@ final class StudentApiTest extends TestCase
         ])->assertUnprocessable();
     }
 
-    public function test_unassigned_student_cannot_create_proposal(): void
+    /**
+     * Drafting no longer waits on a supervisor.
+     *
+     * Under the team-formation flow a project exists first and then asks
+     * someone to take it on, so requiring a supervisor to write a draft would
+     * make the sequence impossible to start.
+     */
+    public function test_a_student_without_a_supervisor_can_draft_a_proposal(): void
     {
         Sanctum::actingAs(User::query()->where('email', 'student2@fyp.local')->firstOrFail());
 
         $this->postJson('/api/student/proposals', [
-            'title' => 'No supervisor project',
-            'abstract' => 'Should fail',
-        ])->assertUnprocessable();
+            'title' => 'No supervisor yet',
+            'abstract' => 'Drafting should work before anyone has accepted the project.',
+        ])->assertOk();
+    }
+
+    /** Submitting does need one — a proposal is submitted *to* someone. */
+    public function test_a_student_without_a_supervisor_cannot_submit(): void
+    {
+        Sanctum::actingAs(User::query()->where('email', 'student2@fyp.local')->firstOrFail());
+
+        $this->postJson('/api/student/proposals', [
+            'title' => 'No supervisor yet',
+            'abstract' => 'Drafting should work before anyone has accepted the project.',
+        ])->assertOk();
+
+        $this->postJson('/api/student/proposals/submit')
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors('supervisor');
     }
 
     public function test_proposal_save_requires_title(): void

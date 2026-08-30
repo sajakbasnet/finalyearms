@@ -40,7 +40,7 @@ final class UpdateStudentRequest extends FormRequest
                 Rule::unique('students', 'registration_number')->ignore($student?->id),
             ],
             'roll_number' => ['nullable', 'string', 'max:50'],
-            'batch' => ['nullable', 'string', 'max:50'],
+            'batch_id' => ['nullable', 'integer', 'exists:batches,id'],
             'department_id' => ['required', 'integer', 'exists:departments,id'],
             'academic_session_id' => ['required', 'integer', 'exists:academic_sessions,id'],
         ];

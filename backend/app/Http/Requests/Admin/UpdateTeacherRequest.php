@@ -41,7 +41,7 @@ final class UpdateTeacherRequest extends FormRequest
             ],
             'designation' => ['nullable', 'string', 'max:255'],
             'department_id' => ['required', 'integer', 'exists:departments,id'],
-            'maximum_students' => ['nullable', 'integer', 'min:1', 'max:50'],
+            'max_projects' => ['nullable', 'integer', 'min:1', 'max:50'],
         ];
     }
 }

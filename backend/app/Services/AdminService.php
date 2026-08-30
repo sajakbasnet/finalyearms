@@ -84,6 +84,79 @@ final readonly class AdminService
     }
 
     /**
+     * Updates a session, honouring the single-active rule.
+     *
+     * @param  array<string, mixed>  $data
+     */
+    public function updateSession(AcademicSession $session, array $data): AcademicSession
+    {
+        return DB::transaction(function () use ($session, $data): AcademicSession {
+            if (! empty($data['is_active'])) {
+                AcademicSession::query()->whereKeyNot($session->id)->update(['is_active' => false]);
+            }
+
+            $session->update($data);
+
+            return $session->fresh(['dates']);
+        });
+    }
+
+    /**
+     * Makes one session current and stands every other one down.
+     *
+     * Exactly one session is active at a time — students, groups and projects
+     * all pin to it, so two would make "the current session" ambiguous.
+     */
+    public function activateSession(AcademicSession $session): AcademicSession
+    {
+        return DB::transaction(function () use ($session): AcademicSession {
+            AcademicSession::query()->whereKeyNot($session->id)->update(['is_active' => false]);
+            $session->update(['is_active' => true]);
+
+            return $session->fresh(['dates']);
+        });
+    }
+
+    /**
+     * Deletes a session that nothing depends on.
+     *
+     * Students, groups, assignments and projects all reference a session with
+     * restrictOnDelete, so this refuses rather than letting the database throw
+     * an opaque constraint error.
+     *
+     * @throws ValidationException
+     */
+    public function deleteSession(AcademicSession $session): void
+    {
+        $blockers = [
+            'student' => $session->students()->count(),
+            'project' => $session->projects()->count(),
+        ];
+
+        $inUse = array_filter($blockers);
+
+        if ($inUse !== []) {
+            $parts = [];
+            foreach ($inUse as $thing => $count) {
+                $parts[] = "{$count} {$thing}".($count === 1 ? '' : 's');
+            }
+
+            throw ValidationException::withMessages([
+                'session' => 'Cannot delete a session still in use by '.implode(' and ', $parts)
+                    .'. Deactivate it instead.',
+            ]);
+        }
+
+        if ($session->is_active) {
+            throw ValidationException::withMessages([
+                'session' => 'Cannot delete the active session. Activate another one first.',
+            ]);
+        }
+
+        $session->delete();
+    }
+
+    /**
      * @param  array{name: string, start_date: string, end_date: string, is_active?: bool}  $data
      */
     public function createSession(array $data): AcademicSession
@@ -173,7 +246,9 @@ final readonly class AdminService
             $query->where(function ($q) use ($search): void {
                 $q->where('registration_number', 'like', "%{$search}%")
                     ->orWhere('roll_number', 'like', "%{$search}%")
-                    ->orWhere('batch', 'like', "%{$search}%")
+                    ->orWhereHas('batch', function ($batchQuery) use ($search): void {
+                        $batchQuery->where('name', 'like', "%{$search}%");
+                    })
                     ->orWhereHas('user', function ($userQuery) use ($search): void {
                         $userQuery->where('name', 'like', "%{$search}%")
                             ->orWhere('email', 'like', "%{$search}%");
@@ -226,7 +301,7 @@ final readonly class AdminService
      *     employee_id: string,
      *     designation?: string|null,
      *     department_id: int,
-     *     maximum_students?: int
+     *     max_projects?: int
      * }  $data
      */
     public function createTeacher(array $data): Teacher
@@ -249,7 +324,7 @@ final readonly class AdminService
                 'department_id' => $data['department_id'],
                 'employee_id' => $data['employee_id'],
                 'designation' => $data['designation'] ?? null,
-                'maximum_students' => $data['maximum_students'] ?? 5,
+                'max_projects' => $data['max_projects'] ?? 5,
             ])->load(['user', 'department']);
         });
     }
@@ -263,7 +338,7 @@ final readonly class AdminService
      *     employee_id: string,
      *     designation?: string|null,
      *     department_id: int,
-     *     maximum_students?: int
+     *     max_projects?: int
      * }  $data
      *
      * @throws ValidationException
@@ -295,7 +370,7 @@ final readonly class AdminService
                 'department_id' => $data['department_id'],
                 'employee_id' => $data['employee_id'],
                 'designation' => $data['designation'] ?? null,
-                'maximum_students' => $data['maximum_students'] ?? $teacher->maximum_students,
+                'max_projects' => $data['max_projects'] ?? $teacher->max_projects,
             ]);
 
             return $teacher->fresh()->load(['user', 'department'])
@@ -356,8 +431,8 @@ final readonly class AdminService
                 'academic_session_id' => $data['academic_session_id'],
                 'registration_number' => $data['registration_number'],
                 'roll_number' => $data['roll_number'] ?? null,
-                'batch' => $data['batch'] ?? null,
-            ])->load(['user', 'department', 'academicSession', 'supervisorAssignment.teacher.user']);
+                'batch_id' => $data['batch_id'] ?? null,
+            ])->load(['user', 'department', 'academicSession', 'batch', 'supervisorAssignment.teacher.user']);
         });
     }
 
@@ -409,7 +484,7 @@ final readonly class AdminService
                 'academic_session_id' => $data['academic_session_id'],
                 'registration_number' => $data['registration_number'],
                 'roll_number' => $data['roll_number'] ?? null,
-                'batch' => $data['batch'] ?? null,
+                'batch_id' => $data['batch_id'] ?? null,
             ]);
 
             return $student->fresh()->load([
@@ -452,14 +527,16 @@ final readonly class AdminService
             ]);
         }
 
-        $activeCount = $teacher->assignments()
-            ->where('is_active', true)
-            ->where('student_id', '!=', $student->id)
-            ->count();
+        // Capacity is counted in projects: a supervisor takes several teams,
+        // and a team is several students. The student's own project is excluded
+        // so re-confirming an existing assignment never trips the limit.
+        $currentProjectId = $student->projects()->value('id');
 
-        if ($activeCount >= $teacher->maximum_students) {
+        if (! $teacher->hasCapacity($currentProjectId)) {
             throw ValidationException::withMessages([
-                'teacher_id' => ['This teacher has reached the maximum number of assigned students.'],
+                'teacher_id' => [
+                    "This supervisor is already carrying {$teacher->activeProjectCount()} of a maximum {$teacher->max_projects} projects.",
+                ],
             ]);
         }
 

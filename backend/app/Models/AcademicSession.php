@@ -33,6 +33,11 @@ final class AcademicSession extends Model
         return $this->hasMany(Student::class);
     }
 
+    public function dates(): HasMany
+    {
+        return $this->hasMany(AcademicSessionDate::class)->orderBy('date');
+    }
+
     public function projects(): HasMany
     {
         return $this->hasMany(Project::class);

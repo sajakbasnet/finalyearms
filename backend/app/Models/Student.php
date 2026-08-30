@@ -20,7 +20,7 @@ final class Student extends Model
         'academic_session_id',
         'registration_number',
         'roll_number',
-        'batch',
+        'batch_id',
     ];
 
     public function user(): BelongsTo
@@ -38,6 +38,11 @@ final class Student extends Model
         return $this->belongsTo(AcademicSession::class);
     }
 
+    public function batch(): BelongsTo
+    {
+        return $this->belongsTo(Batch::class);
+    }
+
     public function supervisorAssignment(): HasOne
     {
         return $this->hasOne(SupervisorAssignment::class)->where('is_active', true);
@@ -46,5 +51,28 @@ final class Student extends Model
     public function projects(): HasMany
     {
         return $this->hasMany(Project::class);
+    }
+
+    public function groupMemberships(): HasMany
+    {
+        return $this->hasMany(StudentGroupMember::class);
+    }
+
+    public function invitations(): HasMany
+    {
+        return $this->hasMany(TeamInvitation::class);
+    }
+
+    /** The team they belong to, if any. */
+    public function group(): ?StudentGroup
+    {
+        $membership = $this->groupMemberships()->with('group')->first();
+
+        return $membership?->group;
+    }
+
+    public function leadsGroup(): bool
+    {
+        return $this->groupMemberships()->where('is_leader', true)->exists();
     }
 }
