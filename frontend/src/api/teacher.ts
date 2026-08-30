@@ -237,3 +237,42 @@ export async function downloadProjectFile(projectId: number, path: string, fileN
   link.remove()
   window.URL.revokeObjectURL(url)
 }
+
+// ------------------------------------------------- supervisor requests
+
+export interface IncomingRequest {
+  id: number
+  status: string
+  rationale: string
+  response_note: string | null
+  created_at: string | null
+  requested_by: string | null
+  project: { id: number; title: string; is_team: boolean } | null
+  team: {
+    id: number
+    name: string
+    member_count: number
+    members: { name: string | null; registration_number: string | null; is_leader: boolean }[]
+  } | null
+}
+
+export interface RequestInbox {
+  meta: { active_projects: number; max_projects: number; remaining_capacity: number }
+  data: IncomingRequest[]
+}
+
+/** Requests awaiting this supervisor, with their current load. */
+export async function fetchIncomingRequests(): Promise<RequestInbox> {
+  const { data } = await api.get<RequestInbox>('/teacher/supervisor-requests')
+  return data
+}
+
+export async function acceptRequest(id: number): Promise<void> {
+  await api.post(`/teacher/supervisor-requests/${id}/accept`)
+}
+
+export async function declineRequest(id: number, responseNote?: string): Promise<void> {
+  await api.post(`/teacher/supervisor-requests/${id}/decline`, {
+    response_note: responseNote,
+  })
+}

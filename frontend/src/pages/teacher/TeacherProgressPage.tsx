@@ -64,7 +64,7 @@ export function TeacherProgressPage() {
             <p className="text-[var(--color-ink-muted)]">No progress reports yet.</p>
           ) : (
             rows.map((row) => (
-              <article key={row.id} className="rounded-xl border border-[var(--color-paper-deep)] bg-white/80 p-5">
+              <article key={row.id} className="rounded-xl border border-[var(--color-paper-deep)] bg-[var(--color-surface)]/80 p-5">
                 <div className="flex flex-wrap items-start justify-between gap-3">
                   <div>
                     <h2 className="text-xl font-semibold">{row.title}</h2>

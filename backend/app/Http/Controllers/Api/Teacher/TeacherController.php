@@ -45,7 +45,7 @@ final class TeacherController extends Controller
                         'name' => $student?->user?->name,
                         'email' => $student?->user?->email,
                         'registration_number' => $student?->registration_number,
-                        'batch' => $student?->batch,
+                        'batch' => $student?->batch?->name,
                         'department' => $student?->department?->name,
                         'session' => $student?->academicSession?->name,
                     ],

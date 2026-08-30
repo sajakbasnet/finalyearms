@@ -71,7 +71,7 @@ export function StudentProgressPage() {
       {success && <p className="text-[var(--color-success)]">{success}</p>}
 
       <div className="grid gap-6 xl:grid-cols-[1fr_1.2fr]">
-        <form onSubmit={handleSubmit} className="rounded-xl border border-[var(--color-paper-deep)] bg-white/80 p-5">
+        <form onSubmit={handleSubmit} className="rounded-xl border border-[var(--color-paper-deep)] bg-[var(--color-surface)]/80 p-5">
           <h2 className="font-[family-name:var(--font-display)] text-2xl text-[var(--color-sea-deep)]">
             New report
           </h2>
@@ -127,7 +127,7 @@ export function StudentProgressPage() {
             <p className="text-[var(--color-ink-muted)]">No progress reports submitted yet.</p>
           ) : (
             workspace?.progress_reports.map((report) => (
-              <article key={report.id} className="rounded-xl border border-[var(--color-paper-deep)] bg-white/80 p-4">
+              <article key={report.id} className="rounded-xl border border-[var(--color-paper-deep)] bg-[var(--color-surface)]/80 p-4">
                 <div className="flex items-start justify-between gap-3">
                   <div>
                     <h3 className="font-semibold">{report.title}</h3>

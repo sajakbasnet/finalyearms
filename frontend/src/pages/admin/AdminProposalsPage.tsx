@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { StatusChip } from '../../components/StatusChip'
 import {
   fetchDepartments,
   fetchProposals,
@@ -16,20 +17,6 @@ const STATUS_OPTIONS = [
   { value: 'approved', label: 'Approved' },
   { value: 'rejected', label: 'Rejected' },
 ]
-
-function statusTone(status: string): string {
-  switch (status) {
-    case 'approved':
-      return 'bg-[rgba(47,107,79,0.12)] text-[var(--color-success)]'
-    case 'rejected':
-    case 'cancelled':
-      return 'bg-[rgba(166,61,61,0.12)] text-[var(--color-danger)]'
-    case 'revision_requested':
-      return 'bg-[rgba(196,122,44,0.14)] text-[var(--color-amber)]'
-    default:
-      return 'bg-[var(--color-sea-soft)] text-[var(--color-sea-deep)]'
-  }
-}
 
 export function AdminProposalsPage() {
   const [departments, setDepartments] = useState<DepartmentOption[]>([])
@@ -88,7 +75,7 @@ export function AdminProposalsPage() {
         <select
           value={departmentId}
           onChange={(e) => setDepartmentId(e.target.value)}
-          className="rounded-lg border border-[var(--color-paper-deep)] bg-white px-3 py-2.5 outline-none focus:border-[var(--color-sea)]"
+          className="rounded-lg border border-[var(--color-paper-deep)] bg-[var(--color-surface)] px-3 py-2.5 outline-none focus:border-[var(--color-sea)]"
         >
           <option value="">All departments</option>
           {departments.map((department) => (
@@ -101,7 +88,7 @@ export function AdminProposalsPage() {
         <select
           value={status}
           onChange={(e) => setStatus(e.target.value)}
-          className="rounded-lg border border-[var(--color-paper-deep)] bg-white px-3 py-2.5 outline-none focus:border-[var(--color-sea)]"
+          className="rounded-lg border border-[var(--color-paper-deep)] bg-[var(--color-surface)] px-3 py-2.5 outline-none focus:border-[var(--color-sea)]"
         >
           {STATUS_OPTIONS.map((option) => (
             <option key={option.value || 'all'} value={option.value}>
@@ -115,7 +102,7 @@ export function AdminProposalsPage() {
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           placeholder="Search title, student, registration…"
-          className="rounded-lg border border-[var(--color-paper-deep)] bg-white px-3 py-2.5 outline-none focus:border-[var(--color-sea)]"
+          className="rounded-lg border border-[var(--color-paper-deep)] bg-[var(--color-surface)] px-3 py-2.5 outline-none focus:border-[var(--color-sea)]"
         />
       </div>
 
@@ -126,7 +113,7 @@ export function AdminProposalsPage() {
       {isLoading ? (
         <p className="text-[var(--color-ink-muted)]">Loading proposals…</p>
       ) : (
-        <div className="overflow-hidden rounded-xl border border-[var(--color-paper-deep)] bg-white/70">
+        <div className="overflow-hidden rounded-xl border border-[var(--color-paper-deep)] bg-[var(--color-surface)]/70">
           <table className="w-full min-w-[760px] text-left text-sm">
             <thead className="bg-[var(--color-paper-deep)]/60 text-[var(--color-ink-muted)]">
               <tr>
@@ -169,9 +156,7 @@ export function AdminProposalsPage() {
                       )}
                     </td>
                     <td className="px-4 py-3">
-                      <span className={`inline-flex rounded-md px-2 py-1 text-xs font-semibold ${statusTone(proposal.status)}`}>
-                        {proposal.status_label}
-                      </span>
+                      <StatusChip status={proposal.status} label={proposal.status_label} />
                     </td>
                     <td className="px-4 py-3">v{proposal.version_number}</td>
                   </tr>

@@ -51,9 +51,38 @@ final class Project extends Model
         return $this->belongsTo(Student::class);
     }
 
+    public function group(): BelongsTo
+    {
+        return $this->belongsTo(StudentGroup::class, 'student_group_id');
+    }
+
     public function proposalVersions(): HasMany
     {
         return $this->hasMany(ProposalVersion::class);
+    }
+
+    public function supervisorRequests(): HasMany
+    {
+        return $this->hasMany(SupervisorRequest::class);
+    }
+
+    public function members(): HasMany
+    {
+        return $this->hasMany(ProjectMember::class);
+    }
+
+    /**
+     * Every student on this project, whether it is individual or a team.
+     *
+     * @return list<int>
+     */
+    public function studentIds(): array
+    {
+        if ($this->student_group_id !== null) {
+            return $this->group?->members()->pluck('student_id')->all() ?? [];
+        }
+
+        return $this->student_id !== null ? [(int) $this->student_id] : [];
     }
 
     public function milestones(): HasMany

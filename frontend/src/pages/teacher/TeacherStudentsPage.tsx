@@ -27,7 +27,7 @@ export function TeacherStudentsPage() {
 
       {error && <p className="text-[var(--color-danger)]">{error}</p>}
 
-      <div className="overflow-x-auto rounded-xl border border-[var(--color-paper-deep)] bg-white/80">
+      <div className="overflow-x-auto rounded-xl border border-[var(--color-paper-deep)] bg-[var(--color-surface)]/80">
         {isLoading ? (
           <p className="px-4 py-6 text-[var(--color-ink-muted)]">Loading…</p>
         ) : (

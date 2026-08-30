@@ -19,7 +19,6 @@ use App\Models\User;
 use App\Notifications\PortalNotification;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\ValidationException;
 
 final readonly class StudentService
@@ -65,7 +64,7 @@ final readonly class StudentService
             ] : null,
             'student' => [
                 'registration_number' => $student->registration_number,
-                'batch' => $student->batch,
+                'batch' => $student->batch?->name,
                 'department' => $student->department?->name,
                 'session' => $student->academicSession?->name,
             ],
@@ -140,7 +139,7 @@ final readonly class StudentService
                 'domain' => $data['domain'] ?? $project->domain,
                 'technology_stack' => $data['technologies'] ?? $project->technology_stack,
                 'status' => ProjectStatus::ProposalPending,
-                'supervisor_id' => $student->supervisorAssignment?->teacher_id,
+                'supervisor_id' => $project->supervisor_id ?? $student->supervisorAssignment?->teacher_id,
             ]);
 
             return $proposal->fresh()->load(['comments.user', 'comments.replies.user']);
@@ -169,6 +168,14 @@ final readonly class StudentService
         if (! filled($proposal->title) || ! filled($proposal->abstract)) {
             throw ValidationException::withMessages([
                 'proposal' => ['Title and abstract are required before submission.'],
+            ]);
+        }
+
+        // Drafting needs no supervisor, but submitting does — a proposal is
+        // submitted *to* someone for review.
+        if ($project->supervisor_id === null) {
+            throw ValidationException::withMessages([
+                'supervisor' => ['A supervisor must accept your project before you can submit a proposal.'],
             ]);
         }
 
@@ -316,6 +323,50 @@ final readonly class StudentService
     /**
      * @return list<array<string, mixed>>
      */
+    /**
+     * Every version of this project's proposal, newest first.
+     *
+     * Versions are the record of what was submitted and what came back, so
+     * comments and replies are loaded with them rather than fetched per row.
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    public function proposalHistory(Student $student): array
+    {
+        $project = $this->requireProject($student);
+
+        return $project->proposalVersions()
+            ->with(['comments.user', 'comments.replies.user', 'submitter'])
+            ->orderByDesc('version_number')
+            ->get()
+            ->map(fn (ProposalVersion $version): array => [
+                'id' => $version->id,
+                'version_number' => $version->version_number,
+                'title' => $version->title,
+                'abstract' => $version->abstract,
+                'status' => $version->status?->value,
+                'status_label' => $version->status?->label(),
+                'submitted_at' => $version->submitted_at?->toIso8601String(),
+                'submitted_by' => $version->submitter?->name,
+                'pdf_path' => $version->pdf_path,
+                'comments' => $version->comments->map(fn ($comment): array => [
+                    'id' => $comment->id,
+                    'section' => $comment->section,
+                    'comment' => $comment->comment,
+                    'action' => $comment->action,
+                    'author' => $comment->user?->name,
+                    'created_at' => $comment->created_at?->toIso8601String(),
+                    'replies' => $comment->replies->map(fn ($reply): array => [
+                        'id' => $reply->id,
+                        'reply' => $reply->reply,
+                        'author' => $reply->user?->name,
+                        'created_at' => $reply->created_at?->toIso8601String(),
+                    ])->all(),
+                ])->all(),
+            ])
+            ->all();
+    }
+
     public function timeline(Student $student): array
     {
         $project = $this->getOrNullProject($student);
@@ -369,10 +420,19 @@ final readonly class StudentService
         $user->unreadNotifications->markAsRead();
     }
 
+    /**
+     * The student's current project, individual or team.
+     *
+     * A team project hangs off the group rather than the student, so matching
+     * on `student_id` alone would miss it entirely.
+     */
     private function getOrNullProject(Student $student): ?Project
     {
         return Project::query()
-            ->where('student_id', $student->id)
+            ->where(function ($query) use ($student): void {
+                $query->where('student_id', $student->id)
+                    ->orWhereHas('members', fn ($q) => $q->where('student_id', $student->id));
+            })
             ->latest('id')
             ->first();
     }
@@ -401,23 +461,24 @@ final readonly class StudentService
             return $project;
         }
 
-        if ($student->supervisorAssignment === null) {
-            throw ValidationException::withMessages([
-                'supervisor' => ['You must be assigned a supervisor before submitting a project proposal.'],
-            ]);
-        }
-
-        return Project::query()->create([
+        // No supervisor required: under the team-formation flow a project
+        // exists first and then asks someone to take it on. Writing a proposal
+        // straight away creates an individual project as a convenience.
+        $project = Project::query()->create([
             'title' => $data['title'],
             'description' => $data['abstract'] ?? null,
             'domain' => $data['domain'] ?? null,
             'technology_stack' => $data['technologies'] ?? null,
             'category' => 'Individual',
             'status' => ProjectStatus::Draft,
-            'supervisor_id' => $student->supervisorAssignment->teacher_id,
+            'supervisor_id' => $student->supervisorAssignment?->teacher_id,
             'academic_session_id' => $student->academic_session_id,
             'student_id' => $student->id,
         ]);
+
+        $project->members()->create(['student_id' => $student->id]);
+
+        return $project;
     }
 
     /**

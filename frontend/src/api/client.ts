@@ -1,7 +1,28 @@
 import axios from 'axios'
 
+/**
+ * One frontend build serves every tenant, so the API host cannot be baked in.
+ *
+ * In production each tenant is reached at its own hostname and the reverse
+ * proxy forwards `/api` to that tenant's container — same origin, no CORS, and
+ * the request necessarily lands on the right tenant. VITE_API_URL stays as an
+ * escape hatch for split-host deployments and local development.
+ */
+function resolveBaseUrl(): string {
+  const configured = import.meta.env.VITE_API_URL
+  if (configured) {
+    return configured
+  }
+
+  if (import.meta.env.PROD && typeof window !== 'undefined') {
+    return `${window.location.origin}/api`
+  }
+
+  return 'http://127.0.0.1:8000/api'
+}
+
 const api = axios.create({
-  baseURL: import.meta.env.VITE_API_URL ?? 'http://127.0.0.1:8000/api',
+  baseURL: resolveBaseUrl(),
   headers: {
     Accept: 'application/json',
     'Content-Type': 'application/json',

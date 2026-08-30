@@ -132,7 +132,7 @@ export function TeacherProposalDetailPage() {
       {success && <p className="text-[var(--color-success)]">{success}</p>}
 
       <div className="grid gap-6 xl:grid-cols-[1.4fr_1fr]">
-        <section className="space-y-4 rounded-xl border border-[var(--color-paper-deep)] bg-white/80 p-5">
+        <section className="space-y-4 rounded-xl border border-[var(--color-paper-deep)] bg-[var(--color-surface)]/80 p-5">
           {sections.map(([key, label]) => {
             const value = proposal[key as keyof TeacherProposalDetail]
             if (typeof value !== 'string' || !value) {
@@ -154,7 +154,7 @@ export function TeacherProposalDetailPage() {
         </section>
 
         <div className="space-y-4">
-          <section className="rounded-xl border border-[var(--color-paper-deep)] bg-white/80 p-5">
+          <section className="rounded-xl border border-[var(--color-paper-deep)] bg-[var(--color-surface)]/80 p-5">
             <h2 className="font-[family-name:var(--font-display)] text-2xl text-[var(--color-sea-deep)]">
               Decision
             </h2>
@@ -192,7 +192,7 @@ export function TeacherProposalDetailPage() {
             </div>
           </section>
 
-          <form onSubmit={handleComment} className="rounded-xl border border-[var(--color-paper-deep)] bg-white/80 p-5">
+          <form onSubmit={handleComment} className="rounded-xl border border-[var(--color-paper-deep)] bg-[var(--color-surface)]/80 p-5">
             <h2 className="font-[family-name:var(--font-display)] text-2xl text-[var(--color-sea-deep)]">
               Add comment
             </h2>
@@ -222,7 +222,7 @@ export function TeacherProposalDetailPage() {
             </button>
           </form>
 
-          <section className="rounded-xl border border-[var(--color-paper-deep)] bg-white/80 p-5">
+          <section className="rounded-xl border border-[var(--color-paper-deep)] bg-[var(--color-surface)]/80 p-5">
             <h2 className="font-[family-name:var(--font-display)] text-2xl text-[var(--color-sea-deep)]">
               Conversation
             </h2>

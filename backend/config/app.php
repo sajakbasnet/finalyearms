@@ -55,6 +55,13 @@ return [
     'url' => env('APP_URL', 'http://localhost'),
 
     /*
+     | Where the SPA is served. Same origin as the API in a tenant container,
+     | but split during local development, so password reset links and other
+     | user-facing URLs resolve through this rather than APP_URL.
+     */
+    'frontend_url' => env('FRONTEND_URL', env('APP_URL', 'http://localhost')),
+
+    /*
     |--------------------------------------------------------------------------
     | Application Timezone
     |--------------------------------------------------------------------------

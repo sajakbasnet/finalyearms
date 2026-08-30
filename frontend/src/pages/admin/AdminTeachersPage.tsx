@@ -18,7 +18,7 @@ const emptyForm = {
   employee_id: '',
   designation: '',
   department_id: '',
-  maximum_students: '5',
+  max_projects: '5',
 }
 
 export function AdminTeachersPage() {
@@ -73,7 +73,7 @@ export function AdminTeachersPage() {
       employee_id: teacher.employee_id,
       designation: teacher.designation ?? '',
       department_id: teacher.department ? String(teacher.department.id) : '',
-      maximum_students: String(teacher.maximum_students),
+      max_projects: String(teacher.max_projects),
     })
     setSuccess(null)
     setError(null)
@@ -98,7 +98,7 @@ export function AdminTeachersPage() {
       employee_id: form.employee_id,
       designation: form.designation || undefined,
       department_id: Number(form.department_id),
-      maximum_students: Number(form.maximum_students || 5),
+      max_projects: Number(form.max_projects || 5),
     }
 
     try {
@@ -158,7 +158,7 @@ export function AdminTeachersPage() {
         <select
           value={departmentFilter}
           onChange={(e) => setDepartmentFilter(e.target.value)}
-          className="rounded-lg border border-[var(--color-paper-deep)] bg-white px-3 py-2.5"
+          className="rounded-lg border border-[var(--color-paper-deep)] bg-[var(--color-surface)] px-3 py-2.5"
         >
           <option value="">All departments</option>
           {departments.map((department) => (
@@ -172,12 +172,12 @@ export function AdminTeachersPage() {
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           placeholder="Search name, email, employee ID…"
-          className="rounded-lg border border-[var(--color-paper-deep)] bg-white px-3 py-2.5"
+          className="rounded-lg border border-[var(--color-paper-deep)] bg-[var(--color-surface)] px-3 py-2.5"
         />
       </div>
 
       <div className="grid gap-6 xl:grid-cols-[1fr_1.35fr]">
-        <form onSubmit={handleSubmit} className="rounded-xl border border-[var(--color-paper-deep)] bg-white/80 p-5">
+        <form onSubmit={handleSubmit} className="rounded-xl border border-[var(--color-paper-deep)] bg-[var(--color-surface)]/80 p-5">
           <h2 className="font-[family-name:var(--font-display)] text-2xl text-[var(--color-sea-deep)]">
             {editingId ? 'Edit teacher' : 'Add teacher'}
           </h2>
@@ -197,7 +197,7 @@ export function AdminTeachersPage() {
                 </option>
               ))}
             </select>
-            <input type="number" min={1} max={50} placeholder="Max students" value={form.maximum_students} onChange={(e) => setForm((p) => ({ ...p, maximum_students: e.target.value }))} className="rounded-lg border border-[var(--color-paper-deep)] px-3 py-2.5" />
+            <input type="number" min={1} max={50} placeholder="Max students" value={form.max_projects} onChange={(e) => setForm((p) => ({ ...p, max_projects: e.target.value }))} className="rounded-lg border border-[var(--color-paper-deep)] px-3 py-2.5" />
           </div>
 
           <div className="mt-4 flex gap-2">
@@ -212,7 +212,7 @@ export function AdminTeachersPage() {
           </div>
         </form>
 
-        <div className="overflow-x-auto rounded-xl border border-[var(--color-paper-deep)] bg-white/80">
+        <div className="overflow-x-auto rounded-xl border border-[var(--color-paper-deep)] bg-[var(--color-surface)]/80">
           {isLoading ? (
             <p className="px-4 py-6 text-[var(--color-ink-muted)]">Loading…</p>
           ) : (
@@ -238,7 +238,7 @@ export function AdminTeachersPage() {
                         <p className="text-[var(--color-ink-muted)]">{teacher.employee_id} · {teacher.email}</p>
                       </td>
                       <td className="px-4 py-3">{teacher.department?.name ?? '—'}</td>
-                      <td className="px-4 py-3">{teacher.active_students_count}/{teacher.maximum_students}</td>
+                      <td className="px-4 py-3">{teacher.active_students_count}/{teacher.max_projects}</td>
                       <td className="px-4 py-3">
                         <div className="flex gap-2">
                           <button type="button" onClick={() => startEdit(teacher)} className="text-[var(--color-sea)] hover:underline">Edit</button>

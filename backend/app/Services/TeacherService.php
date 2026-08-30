@@ -15,6 +15,7 @@ use App\Models\Project;
 use App\Models\ProposalComment;
 use App\Models\ProposalReply;
 use App\Models\ProposalVersion;
+use App\Models\SupervisorAssignment;
 use App\Models\Teacher;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Collection;
@@ -25,6 +26,10 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
 
 final readonly class TeacherService
 {
+    public function __construct(
+        private TitleRegistryClient $titleRegistry,
+    ) {}
+
     public function resolveTeacher(User $user): Teacher
     {
         $teacher = $user->teacher;
@@ -39,7 +44,7 @@ final readonly class TeacherService
     }
 
     /**
-     * @return Collection<int, \App\Models\SupervisorAssignment>
+     * @return Collection<int, SupervisorAssignment>
      */
     public function assignedStudents(Teacher $teacher): Collection
     {
@@ -152,7 +157,23 @@ final readonly class TeacherService
                 'action' => $action,
             ]);
 
-            return $this->getProposal($teacher, $proposal->fresh());
+            $reviewed = $this->getProposal($teacher, $proposal->fresh());
+
+            /*
+             * An approved title becomes a claim on the topic, so it is
+             * contributed to the cross-institution registry. Only on approval:
+             * a draft or a rejected proposal is not a claim.
+             *
+             * Deferred until the transaction commits, and best-effort inside —
+             * an approval must not fail because the registry was unreachable.
+             */
+            if ($status === ProposalStatus::Approved && $proposal->project !== null) {
+                $project = $proposal->project->load(['academicSession', 'latestProposal']);
+
+                DB::afterCommit(fn () => $this->titleRegistry->record($project));
+            }
+
+            return $reviewed;
         });
     }
 

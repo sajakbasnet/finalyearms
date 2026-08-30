@@ -6,6 +6,7 @@ namespace App\Services;
 
 use App\Enums\ProjectStatus;
 use App\Enums\ProposalStatus;
+use App\Enums\UserRole;
 use App\Models\Project;
 use App\Models\ProposalVersion;
 use App\Models\Student;
@@ -19,10 +20,12 @@ final readonly class DashboardService
      */
     public function forUser(User $user): array
     {
-        return match ($user->role?->slug) {
-            'admin' => $this->adminDashboard(),
-            'teacher' => $this->teacherDashboard($user),
-            'student' => $this->studentDashboard($user),
+        return match ($user->userRole()) {
+            // Coordinators see the same institution-wide figures as an admin;
+            // their oversight duties need the identical picture.
+            UserRole::InstitutionAdmin, UserRole::Coordinator => $this->adminDashboard(),
+            UserRole::Supervisor => $this->teacherDashboard($user),
+            UserRole::Student => $this->studentDashboard($user),
             default => [],
         };
     }
@@ -154,7 +157,7 @@ final readonly class DashboardService
             ] : null,
             'student' => [
                 'registration_number' => $student->registration_number,
-                'batch' => $student->batch,
+                'batch' => $student->batch?->name,
                 'department' => $student->department?->name,
                 'session' => $student->academicSession?->name,
             ],

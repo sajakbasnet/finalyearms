@@ -1,23 +1,11 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
+import { StatusChip } from '../../components/StatusChip'
 import {
   extractError,
   fetchTeacherProposals,
   type TeacherProposalSummary,
 } from '../../api/teacher'
-
-function statusTone(status: string): string {
-  switch (status) {
-    case 'approved':
-      return 'bg-[rgba(47,107,79,0.12)] text-[var(--color-success)]'
-    case 'rejected':
-      return 'bg-[rgba(166,61,61,0.12)] text-[var(--color-danger)]'
-    case 'revision_requested':
-      return 'bg-[rgba(196,122,44,0.14)] text-[var(--color-amber)]'
-    default:
-      return 'bg-[var(--color-sea-soft)] text-[var(--color-sea-deep)]'
-  }
-}
 
 export function TeacherProposalsPage() {
   const [rows, setRows] = useState<TeacherProposalSummary[]>([])
@@ -47,7 +35,7 @@ export function TeacherProposalsPage() {
       <select
         value={status}
         onChange={(e) => setStatus(e.target.value)}
-        className="rounded-lg border border-[var(--color-paper-deep)] bg-white px-3 py-2.5"
+        className="rounded-lg border border-[var(--color-paper-deep)] bg-[var(--color-surface)] px-3 py-2.5"
       >
         <option value="">All statuses</option>
         <option value="submitted">Submitted</option>
@@ -60,7 +48,7 @@ export function TeacherProposalsPage() {
 
       {error && <p className="text-[var(--color-danger)]">{error}</p>}
 
-      <div className="overflow-x-auto rounded-xl border border-[var(--color-paper-deep)] bg-white/80">
+      <div className="overflow-x-auto rounded-xl border border-[var(--color-paper-deep)] bg-[var(--color-surface)]/80">
         {isLoading ? (
           <p className="px-4 py-6 text-[var(--color-ink-muted)]">Loading…</p>
         ) : (
@@ -90,9 +78,7 @@ export function TeacherProposalsPage() {
                       <p className="text-[var(--color-ink-muted)]">{row.student.registration_number}</p>
                     </td>
                     <td className="px-4 py-3">
-                      <span className={`inline-flex rounded-md px-2 py-1 text-xs font-semibold ${statusTone(row.status)}`}>
-                        {row.status_label}
-                      </span>
+                      <StatusChip status={row.status} label={row.status_label} />
                     </td>
                     <td className="px-4 py-3">v{row.version_number}</td>
                     <td className="px-4 py-3">

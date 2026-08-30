@@ -11,7 +11,9 @@ use App\Http\Requests\Student\StoreProgressReportRequest;
 use App\Http\Requests\Student\UploadFinalRequest;
 use App\Models\ProposalComment;
 use App\Models\ProposalVersion;
+use App\Services\ProposalDuplicateChecker;
 use App\Services\StudentService;
+use App\Services\TitleRegistryClient;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -19,6 +21,8 @@ final class StudentController extends Controller
 {
     public function __construct(
         private readonly StudentService $studentService,
+        private readonly ProposalDuplicateChecker $duplicates,
+        private readonly TitleRegistryClient $titleRegistry,
     ) {}
 
     public function overview(Request $request): JsonResponse
@@ -104,8 +108,31 @@ final class StudentController extends Controller
             pdf: $request->file('pdf'),
         );
 
+        // A warning, never a block: overlap with earlier work is often
+        // legitimate, and refusing it would make the check something to route
+        // around rather than read.
+        $title = $request->string('title')->toString();
+
+        $similar = $this->duplicates->check(
+            $title,
+            $request->string('abstract')->toString() ?: null,
+            $proposal->project_id,
+        );
+
+        // Titles approved at other institutions, from the shared registry.
+        // Best-effort: an unreachable registry returns nothing rather than
+        // blocking the save.
+        $elsewhere = $this->titleRegistry->search($title);
+
+        $hasWarnings = $similar !== [] || $elsewhere !== [];
+
         return response()->json([
             'message' => 'Proposal draft saved.',
+            'warnings' => ! $hasWarnings ? null : [
+                'similar_projects' => $similar,
+                'similar_elsewhere' => $elsewhere,
+                'note' => 'Similar work already exists. Overlap may be fine — read these before submitting.',
+            ],
             'data' => $this->mapProposal($proposal),
         ]);
     }
@@ -187,6 +214,16 @@ final class StudentController extends Controller
                 'github_repository' => $submission->github_repository,
                 'submitted_at' => $submission->submitted_at?->toIso8601String(),
             ],
+        ]);
+    }
+
+    /** Every version of the proposal, with the review thread on each. */
+    public function proposalHistory(Request $request): JsonResponse
+    {
+        $student = $this->studentService->resolveStudent($request->user());
+
+        return response()->json([
+            'data' => $this->studentService->proposalHistory($student),
         ]);
     }
 

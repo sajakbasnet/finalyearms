@@ -80,12 +80,41 @@ final class ServiceTest extends TestCase
     public function test_user_role_helpers(): void
     {
         $student = User::query()->where('email', 'student@fyp.local')->firstOrFail()->load('role');
-        $teacher = User::query()->where('email', 'teacher@fyp.local')->firstOrFail()->load('role');
+        $supervisor = User::query()->where('email', 'teacher@fyp.local')->firstOrFail()->load('role');
         $admin = User::query()->where('email', 'admin@fyp.local')->firstOrFail()->load('role');
+        $coordinator = User::query()->where('email', 'coordinator@fyp.local')->firstOrFail()->load('role');
 
         $this->assertTrue($student->isStudent());
-        $this->assertFalse($student->isTeacher());
-        $this->assertTrue($teacher->isTeacher());
-        $this->assertTrue($admin->isAdmin());
+        $this->assertFalse($student->isSupervisor());
+        $this->assertTrue($supervisor->isSupervisor());
+        $this->assertTrue($admin->isInstitutionAdmin());
+        $this->assertTrue($coordinator->isCoordinator());
+        $this->assertFalse($coordinator->isInstitutionAdmin());
+    }
+
+    public function test_permissions_come_from_the_role_matrix(): void
+    {
+        $coordinator = User::query()->where('email', 'coordinator@fyp.local')->firstOrFail()->load('role');
+        $supervisor = User::query()->where('email', 'teacher@fyp.local')->firstOrFail()->load('role');
+
+        $this->assertTrue($coordinator->hasPermission('project-type.manage'));
+        $this->assertTrue($coordinator->hasPermission('supervisor-assignment.manage'));
+
+        // Coordinators oversee, they do not review individual proposals.
+        $this->assertFalse($coordinator->hasPermission('proposal.review'));
+        $this->assertTrue($supervisor->hasPermission('proposal.review'));
+
+        // Nor do they administer accounts — that is the Institution Admin.
+        $this->assertFalse($coordinator->hasPermission('user.manage'));
+    }
+
+    public function test_team_lead_permissions_are_group_scoped(): void
+    {
+        $student = User::query()->where('email', 'student@fyp.local')->firstOrFail()->load('role');
+
+        // Without a group in hand, team-lead permissions must never appear:
+        // they are meaningless unscoped.
+        $this->assertFalse($student->hasPermission('team.member.manage'));
+        $this->assertNotContains('team.act', $student->permissions());
     }
 }

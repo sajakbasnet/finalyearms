@@ -138,7 +138,7 @@ export function AdminAssignmentsPage() {
         <select
           value={departmentId}
           onChange={(e) => setDepartmentId(e.target.value)}
-          className="rounded-lg border border-[var(--color-paper-deep)] bg-white px-3 py-2.5 outline-none focus:border-[var(--color-sea)]"
+          className="rounded-lg border border-[var(--color-paper-deep)] bg-[var(--color-surface)] px-3 py-2.5 outline-none focus:border-[var(--color-sea)]"
         >
           <option value="">All departments</option>
           {departments.map((department) => (
@@ -153,10 +153,10 @@ export function AdminAssignmentsPage() {
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           placeholder="Search student name or registration…"
-          className="rounded-lg border border-[var(--color-paper-deep)] bg-white px-3 py-2.5 outline-none focus:border-[var(--color-sea)]"
+          className="rounded-lg border border-[var(--color-paper-deep)] bg-[var(--color-surface)] px-3 py-2.5 outline-none focus:border-[var(--color-sea)]"
         />
 
-        <label className="flex items-center gap-2 rounded-lg border border-[var(--color-paper-deep)] bg-white px-3 py-2.5 text-sm">
+        <label className="flex items-center gap-2 rounded-lg border border-[var(--color-paper-deep)] bg-[var(--color-surface)] px-3 py-2.5 text-sm">
           <input
             type="checkbox"
             checked={unassignedOnly}
@@ -170,7 +170,7 @@ export function AdminAssignmentsPage() {
       {success && <p className="text-[var(--color-success)]">{success}</p>}
 
       <div className="grid gap-6 lg:grid-cols-[1.4fr_1fr]">
-        <div className="overflow-hidden rounded-xl border border-[var(--color-paper-deep)] bg-white/70">
+        <div className="overflow-hidden rounded-xl border border-[var(--color-paper-deep)] bg-[var(--color-surface)]/70">
           {isLoading ? (
             <p className="px-4 py-6 text-[var(--color-ink-muted)]">Loading students…</p>
           ) : (
@@ -221,7 +221,7 @@ export function AdminAssignmentsPage() {
 
         <form
           onSubmit={handleAssign}
-          className="rounded-xl border border-[var(--color-paper-deep)] bg-white/70 p-5"
+          className="rounded-xl border border-[var(--color-paper-deep)] bg-[var(--color-surface)]/70 p-5"
         >
           <h2 className="font-[family-name:var(--font-display)] text-2xl text-[var(--color-sea-deep)]">
             Assignment panel
@@ -247,12 +247,12 @@ export function AdminAssignmentsPage() {
                   value={selectedTeacherId}
                   onChange={(e) => setSelectedTeacherId(e.target.value)}
                   required
-                  className="w-full rounded-lg border border-[var(--color-paper-deep)] bg-white px-3 py-2.5 outline-none focus:border-[var(--color-sea)]"
+                  className="w-full rounded-lg border border-[var(--color-paper-deep)] bg-[var(--color-surface)] px-3 py-2.5 outline-none focus:border-[var(--color-sea)]"
                 >
                   <option value="">Select teacher</option>
                   {availableTeachers.map((teacher) => (
                     <option key={teacher.id} value={teacher.id}>
-                      {teacher.name} ({teacher.active_students_count}/{teacher.maximum_students})
+                      {teacher.name} ({teacher.active_students_count}/{teacher.max_projects})
                     </option>
                   ))}
                 </select>

@@ -11,8 +11,10 @@ use App\Http\Requests\Admin\StoreSessionRequest;
 use App\Http\Requests\Admin\StoreStudentRequest;
 use App\Http\Requests\Admin\StoreTeacherRequest;
 use App\Http\Requests\Admin\UpdateDepartmentRequest;
+use App\Http\Requests\Admin\UpdateSessionRequest;
 use App\Http\Requests\Admin\UpdateStudentRequest;
 use App\Http\Requests\Admin\UpdateTeacherRequest;
+use App\Models\AcademicSession;
 use App\Models\Department;
 use App\Models\Student;
 use App\Models\Teacher;
@@ -67,13 +69,8 @@ final class AdminController extends Controller
     public function sessions(): JsonResponse
     {
         return response()->json([
-            'data' => $this->adminService->listSessions()->map(fn ($session) => [
-                'id' => $session->id,
-                'name' => $session->name,
-                'start_date' => $session->start_date?->toDateString(),
-                'end_date' => $session->end_date?->toDateString(),
-                'is_active' => $session->is_active,
-            ]),
+            'data' => $this->adminService->listSessions()
+                ->map(fn (AcademicSession $session) => $this->mapSession($session)),
         ]);
     }
 
@@ -83,14 +80,58 @@ final class AdminController extends Controller
 
         return response()->json([
             'message' => 'Academic session created successfully.',
-            'data' => [
-                'id' => $session->id,
-                'name' => $session->name,
-                'start_date' => $session->start_date?->toDateString(),
-                'end_date' => $session->end_date?->toDateString(),
-                'is_active' => $session->is_active,
-            ],
+            'data' => $this->mapSession($session),
         ], 201);
+    }
+
+    public function updateSession(UpdateSessionRequest $request, AcademicSession $session): JsonResponse
+    {
+        $session = $this->adminService->updateSession($session, $request->validated());
+
+        return response()->json([
+            'message' => 'Academic session updated successfully.',
+            'data' => $this->mapSession($session),
+        ]);
+    }
+
+    /** Makes this the current session and stands every other one down. */
+    public function activateSession(AcademicSession $session): JsonResponse
+    {
+        $session = $this->adminService->activateSession($session);
+
+        return response()->json([
+            'message' => "{$session->name} is now the active session.",
+            'data' => $this->mapSession($session),
+        ]);
+    }
+
+    public function destroySession(AcademicSession $session): JsonResponse
+    {
+        $this->adminService->deleteSession($session);
+
+        return response()->json(['message' => 'Academic session deleted successfully.']);
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function mapSession(AcademicSession $session): array
+    {
+        return [
+            'id' => $session->id,
+            'name' => $session->name,
+            'start_date' => $session->start_date?->toDateString(),
+            'end_date' => $session->end_date?->toDateString(),
+            'is_active' => $session->is_active,
+            'dates' => $session->relationLoaded('dates')
+                ? $session->dates->map(fn ($date) => [
+                    'id' => $date->id,
+                    'label' => $date->label,
+                    'date' => $date->date?->toDateString(),
+                    'is_deadline' => $date->is_deadline,
+                ])->all()
+                : null,
+        ];
     }
 
     public function proposals(Request $request): JsonResponse
@@ -259,7 +300,7 @@ final class AdminController extends Controller
             'id' => $teacher->id,
             'employee_id' => $teacher->employee_id,
             'designation' => $teacher->designation,
-            'maximum_students' => $teacher->maximum_students,
+            'max_projects' => $teacher->max_projects,
             'active_students_count' => $teacher->active_students_count ?? 0,
             'name' => $teacher->user?->name,
             'email' => $teacher->user?->email,
@@ -331,7 +372,10 @@ final class AdminController extends Controller
             'phone' => $student->user?->phone,
             'registration_number' => $student->registration_number,
             'roll_number' => $student->roll_number,
-            'batch' => $student->batch,
+            // Name for display, id so an edit form can round-trip the value
+            // without blanking it.
+            'batch' => $student->batch?->name,
+            'batch_id' => $student->batch_id,
             'department' => $student->department ? [
                 'id' => $student->department->id,
                 'name' => $student->department->name,

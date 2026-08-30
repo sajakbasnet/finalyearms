@@ -1,18 +1,6 @@
 import { useEffect, useState } from 'react'
+import { StatusChip } from '../../components/StatusChip'
 import { extractError, fetchTimeline, type TimelineItem } from '../../api/student'
-
-function tone(status: string): string {
-  switch (status) {
-    case 'completed':
-      return 'bg-[rgba(47,107,79,0.12)] text-[var(--color-success)]'
-    case 'overdue':
-      return 'bg-[rgba(166,61,61,0.12)] text-[var(--color-danger)]'
-    case 'in_progress':
-      return 'bg-[rgba(196,122,44,0.14)] text-[var(--color-amber)]'
-    default:
-      return 'bg-[var(--color-sea-soft)] text-[var(--color-sea-deep)]'
-  }
-}
 
 export function StudentTimelinePage() {
   const [items, setItems] = useState<TimelineItem[]>([])
@@ -46,12 +34,10 @@ export function StudentTimelinePage() {
           {items.map((item) => (
             <li key={item.id} className="relative">
               <span className="absolute -left-[1.55rem] top-1.5 h-3 w-3 rounded-full bg-[var(--color-sea)]" />
-              <div className="rounded-xl border border-[var(--color-paper-deep)] bg-white/80 p-4">
+              <div className="rounded-xl border border-[var(--color-paper-deep)] bg-[var(--color-surface)]/80 p-4">
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <h2 className="font-semibold">{item.title}</h2>
-                  <span className={`rounded-md px-2 py-1 text-xs font-semibold ${tone(item.status)}`}>
-                    {item.status_label}
-                  </span>
+                  <StatusChip status={item.status} label={item.status_label} />
                 </div>
                 <p className="mt-1 text-sm text-[var(--color-ink-muted)]">
                   Due {item.due_date ?? '—'}

@@ -25,3 +25,7 @@ _ide_helper.php
 Homestead.json
 Homestead.yaml
 Thumbs.db
+
+# Generated from the routes by `php artisan scramble:export`. Committing it
+# guarantees it drifts; regenerate instead.
+/api.json

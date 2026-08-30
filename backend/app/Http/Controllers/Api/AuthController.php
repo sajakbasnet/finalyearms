@@ -6,7 +6,9 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Auth\ChangePasswordRequest;
+use App\Http\Requests\Auth\ForgotPasswordRequest;
 use App\Http\Requests\Auth\LoginRequest;
+use App\Http\Requests\Auth\ResetPasswordRequest;
 use App\Http\Resources\UserResource;
 use App\Services\AuthService;
 use Illuminate\Http\JsonResponse;
@@ -62,6 +64,34 @@ final class AuthController extends Controller
 
         return response()->json([
             'message' => 'Password changed successfully. Please log in again.',
+        ]);
+    }
+
+    /**
+     * Always responds 200, whether or not the address is registered —
+     * a different answer per case would leak which accounts exist.
+     */
+    public function forgotPassword(ForgotPasswordRequest $request): JsonResponse
+    {
+        $this->authService->sendPasswordResetLink(
+            $request->string('email')->toString(),
+        );
+
+        return response()->json([
+            'message' => 'If that email is registered, a reset link has been sent.',
+        ]);
+    }
+
+    public function resetPassword(ResetPasswordRequest $request): JsonResponse
+    {
+        $this->authService->resetPassword(
+            email: $request->string('email')->toString(),
+            token: $request->string('token')->toString(),
+            password: $request->string('password')->toString(),
+        );
+
+        return response()->json([
+            'message' => 'Password reset successfully. Please log in.',
         ]);
     }
 }

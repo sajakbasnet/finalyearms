@@ -4,7 +4,7 @@ import { useAuth } from '../contexts/AuthContext'
 
 function StatTile({ label, value }: { label: string; value: string | number }) {
   return (
-    <div className="rounded-xl border border-[var(--color-paper-deep)] bg-white/70 px-5 py-4">
+    <div className="rounded-xl border border-[var(--color-paper-deep)] bg-[var(--color-surface)]/70 px-5 py-4">
       <p className="text-xs uppercase tracking-[0.14em] text-[var(--color-ink-muted)]">{label}</p>
       <p className="mt-2 font-[family-name:var(--font-display)] text-3xl text-[var(--color-sea-deep)]">
         {value}
@@ -41,7 +41,9 @@ export function DashboardPage() {
 
   const role = user?.role?.slug
 
-  if (role === 'admin') {
+  // Coordinators get the same institution-wide figures as an admin; their
+  // oversight duties need the identical picture. Mirrors DashboardService.
+  if (role === 'institution_admin' || role === 'coordinator') {
     const cards = (data.cards ?? {}) as Record<string, number>
     return (
       <div className="space-y-8 animate-[fadeRise_500ms_ease-out]">
@@ -65,7 +67,7 @@ export function DashboardPage() {
     )
   }
 
-  if (role === 'teacher') {
+  if (role === 'supervisor') {
     const cards = (data.cards ?? {}) as Record<string, number>
     const students = (data.assigned_students ?? []) as Array<{
       id: number
@@ -94,7 +96,7 @@ export function DashboardPage() {
 
         <section>
           <h2 className="text-lg font-semibold text-[var(--color-ink)]">Assigned students</h2>
-          <div className="mt-4 overflow-hidden rounded-xl border border-[var(--color-paper-deep)] bg-white/70">
+          <div className="mt-4 overflow-hidden rounded-xl border border-[var(--color-paper-deep)] bg-[var(--color-surface)]/70">
             <table className="w-full text-left text-sm">
               <thead className="bg-[var(--color-paper-deep)]/60 text-[var(--color-ink-muted)]">
                 <tr>
@@ -158,7 +160,7 @@ export function DashboardPage() {
       </header>
 
       <div className="grid gap-4 lg:grid-cols-3">
-        <div className="rounded-xl border border-[var(--color-paper-deep)] bg-white/70 px-5 py-4 lg:col-span-1">
+        <div className="rounded-xl border border-[var(--color-paper-deep)] bg-[var(--color-surface)]/70 px-5 py-4 lg:col-span-1">
           <p className="text-xs uppercase tracking-[0.14em] text-[var(--color-ink-muted)]">Supervisor</p>
           {cards.supervisor ? (
             <div className="mt-3 space-y-1">
@@ -179,7 +181,7 @@ export function DashboardPage() {
       </div>
 
       <section className="grid gap-4 md:grid-cols-2">
-        <div className="rounded-xl border border-[var(--color-paper-deep)] bg-white/70 px-5 py-4">
+        <div className="rounded-xl border border-[var(--color-paper-deep)] bg-[var(--color-surface)]/70 px-5 py-4">
           <p className="text-xs uppercase tracking-[0.14em] text-[var(--color-ink-muted)]">Project</p>
           <p className="mt-2 font-[family-name:var(--font-display)] text-2xl text-[var(--color-sea-deep)]">
             {project?.title ?? 'No project started'}
@@ -189,7 +191,7 @@ export function DashboardPage() {
           </p>
         </div>
 
-        <div className="rounded-xl border border-[var(--color-paper-deep)] bg-white/70 px-5 py-4">
+        <div className="rounded-xl border border-[var(--color-paper-deep)] bg-[var(--color-surface)]/70 px-5 py-4">
           <p className="text-xs uppercase tracking-[0.14em] text-[var(--color-ink-muted)]">Profile</p>
           <dl className="mt-3 space-y-2 text-sm">
             <div className="flex justify-between gap-4">

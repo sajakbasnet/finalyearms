@@ -116,7 +116,7 @@ export function TeacherProjectPage() {
       {error && <p className="text-[var(--color-danger)]">{error}</p>}
       {success && <p className="text-[var(--color-success)]">{success}</p>}
 
-      <section className="rounded-xl border border-[var(--color-paper-deep)] bg-white/80 p-5">
+      <section className="rounded-xl border border-[var(--color-paper-deep)] bg-[var(--color-surface)]/80 p-5">
         <h2 className="font-[family-name:var(--font-display)] text-2xl text-[var(--color-sea-deep)]">
           Milestones
         </h2>
@@ -149,7 +149,7 @@ export function TeacherProjectPage() {
         </div>
       </section>
 
-      <section className="rounded-xl border border-[var(--color-paper-deep)] bg-white/80 p-5">
+      <section className="rounded-xl border border-[var(--color-paper-deep)] bg-[var(--color-surface)]/80 p-5">
         <h2 className="font-[family-name:var(--font-display)] text-2xl text-[var(--color-sea-deep)]">
           Download uploaded files
         </h2>
@@ -186,7 +186,7 @@ export function TeacherProjectPage() {
         )}
       </section>
 
-      <form onSubmit={handleEvaluation} className="rounded-xl border border-[var(--color-paper-deep)] bg-white/80 p-5">
+      <form onSubmit={handleEvaluation} className="rounded-xl border border-[var(--color-paper-deep)] bg-[var(--color-surface)]/80 p-5">
         <h2 className="font-[family-name:var(--font-display)] text-2xl text-[var(--color-sea-deep)]">
           Evaluate final project
         </h2>

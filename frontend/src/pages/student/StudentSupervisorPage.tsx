@@ -31,7 +31,7 @@ export function StudentSupervisorPage() {
       </header>
 
       <div className="grid gap-4 md:grid-cols-2">
-        <section className="rounded-xl border border-[var(--color-paper-deep)] bg-white/80 p-5">
+        <section className="rounded-xl border border-[var(--color-paper-deep)] bg-[var(--color-surface)]/80 p-5">
           {data.supervisor ? (
             <>
               <p className="text-xs uppercase tracking-[0.14em] text-[var(--color-ink-muted)]">Supervisor</p>
@@ -66,7 +66,7 @@ export function StudentSupervisorPage() {
           )}
         </section>
 
-        <section className="rounded-xl border border-[var(--color-paper-deep)] bg-white/80 p-5">
+        <section className="rounded-xl border border-[var(--color-paper-deep)] bg-[var(--color-surface)]/80 p-5">
           <p className="text-xs uppercase tracking-[0.14em] text-[var(--color-ink-muted)]">Your profile</p>
           <dl className="mt-4 space-y-2 text-sm">
             <div className="flex justify-between gap-4">

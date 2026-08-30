@@ -43,7 +43,7 @@ export function StudentNotificationsPage() {
         <button
           type="button"
           onClick={() => void handleReadAll()}
-          className="rounded-lg border border-[var(--color-paper-deep)] bg-white px-3 py-2 text-sm"
+          className="rounded-lg border border-[var(--color-paper-deep)] bg-[var(--color-surface)] px-3 py-2 text-sm"
         >
           Mark all read
         </button>
@@ -59,7 +59,7 @@ export function StudentNotificationsPage() {
             <article
               key={item.id}
               className={`rounded-xl border border-[var(--color-paper-deep)] p-4 ${
-                item.read_at ? 'bg-white/60' : 'bg-[var(--color-sea-soft)]/40'
+                item.read_at ? 'bg-[var(--color-surface)]/60' : 'bg-[var(--color-sea-soft)]/40'
               }`}
             >
               <div className="flex flex-wrap items-start justify-between gap-3">

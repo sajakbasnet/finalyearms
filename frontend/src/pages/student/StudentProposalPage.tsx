@@ -160,7 +160,7 @@ export function StudentProposalPage() {
       {success && <p className="text-[var(--color-success)]">{success}</p>}
 
       <div className="grid gap-6 xl:grid-cols-[1.4fr_1fr]">
-        <form onSubmit={handleSave} className="space-y-3 rounded-xl border border-[var(--color-paper-deep)] bg-white/80 p-5">
+        <form onSubmit={handleSave} className="space-y-3 rounded-xl border border-[var(--color-paper-deep)] bg-[var(--color-surface)]/80 p-5">
           <fieldset disabled={!canEdit || isSaving} className="space-y-3 disabled:opacity-70">
             {(
               [
@@ -238,7 +238,7 @@ export function StudentProposalPage() {
         </form>
 
         <div className="space-y-4">
-          <section className="rounded-xl border border-[var(--color-paper-deep)] bg-white/80 p-5">
+          <section className="rounded-xl border border-[var(--color-paper-deep)] bg-[var(--color-surface)]/80 p-5">
             <h2 className="font-[family-name:var(--font-display)] text-2xl text-[var(--color-sea-deep)]">
               Version history
             </h2>
@@ -256,7 +256,7 @@ export function StudentProposalPage() {
             </ul>
           </section>
 
-          <section className="rounded-xl border border-[var(--color-paper-deep)] bg-white/80 p-5">
+          <section className="rounded-xl border border-[var(--color-paper-deep)] bg-[var(--color-surface)]/80 p-5">
             <h2 className="font-[family-name:var(--font-display)] text-2xl text-[var(--color-sea-deep)]">
               Supervisor comments
             </h2>

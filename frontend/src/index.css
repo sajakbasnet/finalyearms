@@ -1,19 +1,72 @@
 @import "tailwindcss";
 
+/*
+ * Theme tokens.
+ *
+ * Every colour in the app is referenced as `var(--color-*)`, so the whole
+ * portal can be re-themed at runtime by overriding these on the root element
+ * (see `src/branding/applyBranding.ts`). Nothing here is baked into the bundle.
+ *
+ * Tenant-overridable  : the brand + neutral ramps below.
+ * NOT overridable     : --color-danger / --color-success. Status colours carry
+ *                       meaning; a "danger" that matches someone's brand stops
+ *                       reading as an error.
+ */
 @theme {
   --font-display: "Fraunces", Georgia, serif;
   --font-sans: "Manrope", ui-sans-serif, system-ui, sans-serif;
+
+  /* Neutrals */
   --color-ink: #0f1c24;
+  --color-ink-deep: #071318;
   --color-ink-muted: #4a5d68;
   --color-paper: #f3efe6;
   --color-paper-deep: #e7e0d2;
+
+  /* Primary */
   --color-sea: #0f5c63;
   --color-sea-deep: #0a3f45;
   --color-sea-soft: #d7ecee;
+
+  /* Accent */
   --color-amber: #c47a2c;
   --color-amber-soft: #f3e0c8;
+
+  /* Status — fixed */
   --color-danger: #a63d3d;
   --color-success: #2f6b4f;
+}
+
+/*
+ * Derived tokens. These are computed from the tokens above with color-mix(),
+ * so they follow whatever a tenant sets instead of needing to be themed
+ * separately. Kept out of @theme deliberately: they are consumed via
+ * `bg-[var(--tint-success)]`, matching how the rest of the app is written.
+ */
+:root {
+  --tint-success: color-mix(in srgb, var(--color-success) 12%, transparent);
+  --tint-danger: color-mix(in srgb, var(--color-danger) 12%, transparent);
+  --tint-amber: color-mix(in srgb, var(--color-amber) 14%, transparent);
+
+  /* Translucent paper surfaces (sticky header, login card). */
+  --surface-veil: color-mix(in srgb, var(--color-paper) 92%, transparent);
+  --surface-card: color-mix(in srgb, var(--color-paper) 96%, transparent);
+  --surface-hairline: color-mix(in srgb, var(--color-paper) 8%, transparent);
+
+  /*
+   * Raised card surface, sitting above --color-paper. Plain white for the
+   * stock palette; applyBranding() re-derives it from the tenant's paper so
+   * cards don't stay stark white on a tinted or dark background.
+   */
+  --color-surface: #ffffff;
+
+  /*
+   * Foreground colours for text sitting on top of a brand surface.
+   * Defaults suit the stock palette; applyBranding() recomputes them from the
+   * tenant's colours so a light brand colour doesn't produce white-on-white.
+   */
+  --color-on-brand: #ffffff;
+  --color-on-ink: #ffffff;
 }
 
 * {

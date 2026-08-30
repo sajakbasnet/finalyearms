@@ -70,7 +70,7 @@ export function StudentFinalPage() {
       {success && <p className="text-[var(--color-success)]">{success}</p>}
 
       <div className="grid gap-6 md:grid-cols-2">
-        <form onSubmit={handleSubmit} className="rounded-xl border border-[var(--color-paper-deep)] bg-white/80 p-5">
+        <form onSubmit={handleSubmit} className="rounded-xl border border-[var(--color-paper-deep)] bg-[var(--color-surface)]/80 p-5">
           <label className="block space-y-1 text-sm">
             <span className="text-[var(--color-ink-muted)]">Final report / thesis (PDF, DOC)</span>
             <input
@@ -108,7 +108,7 @@ export function StudentFinalPage() {
           </button>
         </form>
 
-        <section className="rounded-xl border border-[var(--color-paper-deep)] bg-white/80 p-5">
+        <section className="rounded-xl border border-[var(--color-paper-deep)] bg-[var(--color-surface)]/80 p-5">
           <h2 className="font-[family-name:var(--font-display)] text-2xl text-[var(--color-sea-deep)]">
             Current files
           </h2>

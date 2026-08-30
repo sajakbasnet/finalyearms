@@ -3,10 +3,12 @@ import {
   createStudent,
   deleteStudent,
   extractError,
+  fetchBatches,
   fetchDepartments,
   fetchSessions,
   fetchStudents,
   updateStudent,
+  type BatchOption,
   type DepartmentOption,
   type SessionOption,
   type StudentListItem,
@@ -19,13 +21,14 @@ const emptyForm = {
   password: '',
   registration_number: '',
   roll_number: '',
-  batch: '',
+  batch_id: '',
   department_id: '',
   academic_session_id: '',
 }
 
 export function AdminStudentsPage() {
   const [departments, setDepartments] = useState<DepartmentOption[]>([])
+  const [batches, setBatches] = useState<BatchOption[]>([])
   const [sessions, setSessions] = useState<SessionOption[]>([])
   const [students, setStudents] = useState<StudentListItem[]>([])
   const [departmentFilter, setDepartmentFilter] = useState('')
@@ -54,10 +57,11 @@ export function AdminStudentsPage() {
   }
 
   useEffect(() => {
-    void Promise.all([fetchDepartments(), fetchSessions()])
-      .then(([departmentList, sessionList]) => {
+    void Promise.all([fetchDepartments(), fetchSessions(), fetchBatches()])
+      .then(([departmentList, sessionList, batchList]) => {
         setDepartments(departmentList)
         setSessions(sessionList)
+        setBatches(batchList)
         const active = sessionList.find((session) => session.is_active)
         if (active) {
           setForm((prev) => ({
@@ -85,7 +89,7 @@ export function AdminStudentsPage() {
       password: '',
       registration_number: student.registration_number,
       roll_number: student.roll_number ?? '',
-      batch: student.batch ?? '',
+      batch_id: student.batch_id ? String(student.batch_id) : '',
       department_id: student.department ? String(student.department.id) : '',
       academic_session_id: student.academic_session ? String(student.academic_session.id) : '',
     })
@@ -115,7 +119,7 @@ export function AdminStudentsPage() {
       password: form.password || undefined,
       registration_number: form.registration_number,
       roll_number: form.roll_number || undefined,
-      batch: form.batch || undefined,
+      batch_id: form.batch_id ? Number(form.batch_id) : null,
       department_id: Number(form.department_id),
       academic_session_id: Number(form.academic_session_id),
     }
@@ -177,7 +181,7 @@ export function AdminStudentsPage() {
         <select
           value={departmentFilter}
           onChange={(e) => setDepartmentFilter(e.target.value)}
-          className="rounded-lg border border-[var(--color-paper-deep)] bg-white px-3 py-2.5"
+          className="rounded-lg border border-[var(--color-paper-deep)] bg-[var(--color-surface)] px-3 py-2.5"
         >
           <option value="">All departments</option>
           {departments.map((department) => (
@@ -191,12 +195,12 @@ export function AdminStudentsPage() {
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           placeholder="Search name, registration, batch…"
-          className="rounded-lg border border-[var(--color-paper-deep)] bg-white px-3 py-2.5"
+          className="rounded-lg border border-[var(--color-paper-deep)] bg-[var(--color-surface)] px-3 py-2.5"
         />
       </div>
 
       <div className="grid gap-6 xl:grid-cols-[1fr_1.35fr]">
-        <form onSubmit={handleSubmit} className="rounded-xl border border-[var(--color-paper-deep)] bg-white/80 p-5">
+        <form onSubmit={handleSubmit} className="rounded-xl border border-[var(--color-paper-deep)] bg-[var(--color-surface)]/80 p-5">
           <h2 className="font-[family-name:var(--font-display)] text-2xl text-[var(--color-sea-deep)]">
             {editingId ? 'Edit student' : 'Add student'}
           </h2>
@@ -208,7 +212,16 @@ export function AdminStudentsPage() {
             <input required={!editingId} type="password" placeholder={editingId ? 'New password (optional)' : 'Password'} value={form.password} onChange={(e) => setForm((p) => ({ ...p, password: e.target.value }))} className="rounded-lg border border-[var(--color-paper-deep)] px-3 py-2.5" />
             <input required placeholder="Registration number" value={form.registration_number} onChange={(e) => setForm((p) => ({ ...p, registration_number: e.target.value }))} className="rounded-lg border border-[var(--color-paper-deep)] px-3 py-2.5" />
             <input placeholder="Roll number" value={form.roll_number} onChange={(e) => setForm((p) => ({ ...p, roll_number: e.target.value }))} className="rounded-lg border border-[var(--color-paper-deep)] px-3 py-2.5" />
-            <input placeholder="Batch (e.g. 2022)" value={form.batch} onChange={(e) => setForm((p) => ({ ...p, batch: e.target.value }))} className="rounded-lg border border-[var(--color-paper-deep)] px-3 py-2.5" />
+            <select value={form.batch_id} onChange={(e) => setForm((p) => ({ ...p, batch_id: e.target.value }))} className="rounded-lg border border-[var(--color-paper-deep)] px-3 py-2.5">
+              <option value="">No batch</option>
+              {batches
+                .filter((batch) => !form.department_id || batch.department?.id === Number(form.department_id))
+                .map((batch) => (
+                  <option key={batch.id} value={batch.id}>
+                    {batch.name} ({batch.intake_year})
+                  </option>
+                ))}
+            </select>
             <select required value={form.department_id} onChange={(e) => setForm((p) => ({ ...p, department_id: e.target.value }))} className="rounded-lg border border-[var(--color-paper-deep)] px-3 py-2.5">
               <option value="">Assign department</option>
               {departments.map((department) => (
@@ -239,7 +252,7 @@ export function AdminStudentsPage() {
           </div>
         </form>
 
-        <div className="overflow-x-auto rounded-xl border border-[var(--color-paper-deep)] bg-white/80">
+        <div className="overflow-x-auto rounded-xl border border-[var(--color-paper-deep)] bg-[var(--color-surface)]/80">
           {isLoading ? (
             <p className="px-4 py-6 text-[var(--color-ink-muted)]">Loading…</p>
           ) : (

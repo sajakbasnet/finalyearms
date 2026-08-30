@@ -108,7 +108,7 @@ export function AdminDepartmentsPage() {
       {success && <p className="text-[var(--color-success)]">{success}</p>}
 
       <div className="grid gap-6 xl:grid-cols-[1fr_1.2fr]">
-        <form onSubmit={handleSubmit} className="rounded-xl border border-[var(--color-paper-deep)] bg-white/80 p-5">
+        <form onSubmit={handleSubmit} className="rounded-xl border border-[var(--color-paper-deep)] bg-[var(--color-surface)]/80 p-5">
           <h2 className="font-[family-name:var(--font-display)] text-2xl text-[var(--color-sea-deep)]">
             {editingId ? 'Edit department' : 'Add department'}
           </h2>
@@ -164,7 +164,7 @@ export function AdminDepartmentsPage() {
           </div>
         </form>
 
-        <div className="overflow-hidden rounded-xl border border-[var(--color-paper-deep)] bg-white/80">
+        <div className="overflow-hidden rounded-xl border border-[var(--color-paper-deep)] bg-[var(--color-surface)]/80">
           {isLoading ? (
             <p className="px-4 py-6 text-[var(--color-ink-muted)]">Loading…</p>
           ) : (

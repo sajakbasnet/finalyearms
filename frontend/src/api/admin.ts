@@ -15,6 +15,31 @@ export interface SessionOption {
   start_date: string
   end_date: string
   is_active: boolean
+  dates?: SessionKeyDate[] | null
+}
+
+export interface SessionKeyDate {
+  id: number
+  label: string
+  description?: string | null
+  date: string
+  is_deadline: boolean
+}
+
+export interface BatchOption {
+  id: number
+  name: string
+  intake_year: number
+  is_active: boolean
+  students_count: number
+  department: DepartmentOption | null
+}
+
+export interface BatchPayload {
+  department_id: number
+  name: string
+  intake_year: number
+  is_active?: boolean
 }
 
 export interface ProposalListItem {
@@ -55,6 +80,7 @@ export interface StudentListItem {
   registration_number: string
   roll_number: string | null
   batch: string | null
+  batch_id: number | null
   department: DepartmentOption | null
   academic_session: { id: number; name: string } | null
   supervisor: {
@@ -70,7 +96,7 @@ export interface TeacherListItem {
   id: number
   employee_id: string
   designation: string | null
-  maximum_students: number
+  max_projects: number
   active_students_count: number
   name: string
   email: string
@@ -86,7 +112,7 @@ export interface TeacherPayload {
   employee_id: string
   designation?: string
   department_id: number
-  maximum_students?: number
+  max_projects?: number
 }
 
 export interface StudentPayload {
@@ -96,7 +122,7 @@ export interface StudentPayload {
   password?: string
   registration_number: string
   roll_number?: string
-  batch?: string
+  batch_id?: number | null
   department_id: number
   academic_session_id: number
 }
@@ -163,6 +189,70 @@ export async function createSession(payload: {
 }): Promise<SessionOption> {
   const { data } = await api.post<{ data: SessionOption }>('/admin/sessions', payload)
   return data.data
+}
+
+export async function updateSession(
+  id: number,
+  payload: Partial<{ name: string; start_date: string; end_date: string }>,
+): Promise<SessionOption> {
+  const { data } = await api.put<{ data: SessionOption }>(`/admin/sessions/${id}`, payload)
+  return data.data
+}
+
+export async function deleteSession(id: number): Promise<void> {
+  await api.delete(`/admin/sessions/${id}`)
+}
+
+/** Makes one session current; the API stands every other one down. */
+export async function activateSession(id: number): Promise<SessionOption> {
+  const { data } = await api.post<{ data: SessionOption }>(`/admin/sessions/${id}/activate`)
+  return data.data
+}
+
+export async function fetchSessionDates(sessionId: number): Promise<SessionKeyDate[]> {
+  const { data } = await api.get<{ data: SessionKeyDate[] }>(`/admin/sessions/${sessionId}/dates`)
+  return data.data
+}
+
+export async function createSessionDate(
+  sessionId: number,
+  payload: { label: string; date: string; description?: string; is_deadline?: boolean },
+): Promise<SessionKeyDate> {
+  const { data } = await api.post<{ data: SessionKeyDate }>(
+    `/admin/sessions/${sessionId}/dates`,
+    payload,
+  )
+  return data.data
+}
+
+export async function deleteSessionDate(sessionId: number, dateId: number): Promise<void> {
+  await api.delete(`/admin/sessions/${sessionId}/dates/${dateId}`)
+}
+
+export async function fetchBatches(params?: {
+  department_id?: number
+  is_active?: boolean
+}): Promise<BatchOption[]> {
+  const { data } = await api.get<{ data: BatchOption[] }>('/admin/batches', { params })
+  return data.data
+}
+
+export async function createBatch(payload: BatchPayload): Promise<BatchOption> {
+  const { data } = await api.post<{ data: BatchOption }>('/admin/batches', payload)
+  return data.data
+}
+
+export async function updateBatch(
+  id: number,
+  payload: Partial<BatchPayload>,
+): Promise<BatchOption> {
+  const { data } = await api.put<{ data: BatchOption }>(`/admin/batches/${id}`, payload)
+  return data.data
+}
+
+/** Deletes an empty batch; the API deactivates one that still has students. */
+export async function deleteBatch(id: number): Promise<void> {
+  await api.delete(`/admin/batches/${id}`)
 }
 
 export async function fetchProposals(params: {
