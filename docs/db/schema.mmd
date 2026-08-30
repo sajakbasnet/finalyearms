@@ -1,0 +1,281 @@
+%% SupervisEx (finalyearms) — Entity relationship diagram
+%% Renders on GitHub, https://mermaid.live, or the VS Code Mermaid extension.
+%% Kept identical to the block embedded in README.md — edit there, or
+%% regenerate this file from it, so the two cannot drift.
+%% Source of truth: backend/database/migrations/*
+
+erDiagram
+    roles ||--o{ users : "has"
+    users ||--o| teachers : "profile"
+    users ||--o| students : "profile"
+
+    departments ||--o{ teachers : "employs"
+    departments ||--o{ students : "enrolls"
+    departments ||--o{ batches : "intakes"
+    batches ||--o{ students : "cohort"
+    academic_sessions ||--o{ students : "enrolled in"
+    academic_sessions ||--o{ academic_session_dates : "key dates"
+
+    project_types ||--o{ activity_templates : "timelines"
+    activity_templates ||--o{ activity_template_items : "steps"
+    activity_templates ||--o{ activity_templates : "versions"
+
+    users ||--o{ auth_audit_logs : "authenticates"
+
+    teachers ||--o{ student_groups : "supervises"
+    academic_sessions ||--o{ student_groups : "in"
+    student_groups ||--o{ student_group_members : "contains"
+    students ||--o{ student_group_members : "member of"
+
+    students ||--o{ supervisor_assignments : "assigned"
+    teachers ||--o{ supervisor_assignments : "supervises"
+
+    student_groups ||--o{ team_invitations : "invites"
+    students ||--o{ team_invitations : "invited"
+    projects ||--o{ supervisor_requests : "asks"
+    teachers ||--o{ supervisor_requests : "asked"
+    academic_sessions ||--o{ supervisor_assignments : "for"
+
+    teachers ||--o{ projects : "supervises"
+    academic_sessions ||--o{ projects : "in"
+    student_groups ||--o{ projects : "owns"
+    students ||--o{ projects : "owns"
+    projects ||--o{ project_members : "has"
+    students ||--o{ project_members : "on"
+
+    projects ||--o{ proposal_versions : "versions"
+    users ||--o{ proposal_versions : "submits"
+    proposal_versions ||--o{ proposal_comments : "reviewed by"
+    users ||--o{ proposal_comments : "writes"
+    proposal_comments ||--o{ proposal_replies : "thread"
+    users ||--o{ proposal_replies : "writes"
+
+    projects ||--o{ progress_reports : "tracks"
+    users ||--o{ progress_reports : "submits"
+    progress_reports ||--o{ progress_comments : "feedback"
+    users ||--o{ progress_comments : "writes"
+    projects ||--o{ milestones : "plans"
+    projects ||--o{ evaluations : "scored by"
+    teachers ||--o{ evaluations : "scores"
+    projects ||--o{ meeting_logs : "logs"
+    teachers ||--o{ meeting_logs : "attends"
+    projects ||--o| final_submissions : "final"
+
+    users ||--o{ announcements : "creates"
+    users ||--o{ attachments : "uploads"
+    users ||--o{ activity_logs : "acts"
+
+    roles {
+        bigint id PK
+        varchar name UK
+        varchar slug UK
+    }
+    users {
+        bigint id PK
+        bigint role_id FK
+        varchar email UK
+        boolean is_active
+    }
+    departments {
+        bigint id PK
+        varchar code UK
+    }
+    academic_sessions {
+        bigint id PK
+        varchar name UK
+        boolean is_active
+    }
+    teachers {
+        bigint id PK
+        bigint user_id FK
+        bigint department_id FK
+        varchar employee_id UK
+        int max_projects
+    }
+    team_invitations {
+        bigint id PK
+        bigint student_group_id FK
+        bigint student_id FK
+        bigint invited_by FK
+        varchar status
+        timestamp expires_at
+    }
+    supervisor_requests {
+        bigint id PK
+        bigint project_id FK
+        bigint teacher_id FK
+        bigint requested_by FK
+        varchar status
+        text rationale
+        varchar response_note
+    }
+    students {
+        bigint id PK
+        bigint user_id FK
+        bigint department_id FK
+        bigint academic_session_id FK
+        bigint batch_id FK
+        varchar registration_number UK
+    }
+    batches {
+        bigint id PK
+        bigint department_id FK
+        varchar name
+        smallint intake_year
+        boolean is_active
+    }
+    academic_session_dates {
+        bigint id PK
+        bigint academic_session_id FK
+        varchar label
+        date date
+        boolean is_deadline
+    }
+    project_types {
+        bigint id PK
+        varchar slug UK
+        boolean requires_employer
+        boolean is_default
+    }
+    activity_templates {
+        bigint id PK
+        bigint project_type_id FK
+        bigint parent_id FK
+        int version
+        varchar status
+        boolean is_sequential
+        timestamp published_at
+    }
+    activity_template_items {
+        bigint id PK
+        bigint activity_template_id FK
+        varchar type
+        int due_offset_days
+        json config
+        boolean blocks_progression
+        int sort_order
+    }
+    auth_audit_logs {
+        bigint id PK
+        bigint user_id FK
+        varchar event
+        varchar email
+        boolean succeeded
+    }
+    student_groups {
+        bigint id PK
+        bigint supervisor_id FK
+        bigint academic_session_id FK
+        boolean is_individual
+    }
+    student_group_members {
+        bigint id PK
+        bigint student_group_id FK
+        bigint student_id FK
+        boolean is_leader
+    }
+    supervisor_assignments {
+        bigint id PK
+        bigint student_id FK
+        bigint teacher_id FK
+        bigint academic_session_id FK
+        boolean is_active
+    }
+    projects {
+        bigint id PK
+        varchar title
+        varchar status
+        bigint supervisor_id FK
+        bigint academic_session_id FK
+        bigint student_group_id FK
+        bigint student_id FK
+    }
+    project_members {
+        bigint id PK
+        bigint project_id FK
+        bigint student_id FK
+    }
+    proposal_versions {
+        bigint id PK
+        bigint project_id FK
+        int version_number
+        varchar status
+        bigint submitted_by FK
+    }
+    proposal_comments {
+        bigint id PK
+        bigint proposal_version_id FK
+        bigint user_id FK
+        varchar section
+    }
+    proposal_replies {
+        bigint id PK
+        bigint proposal_comment_id FK
+        bigint user_id FK
+    }
+    progress_reports {
+        bigint id PK
+        bigint project_id FK
+        int percentage_completed
+        varchar status
+        bigint submitted_by FK
+    }
+    progress_comments {
+        bigint id PK
+        bigint progress_report_id FK
+        bigint user_id FK
+    }
+    milestones {
+        bigint id PK
+        bigint project_id FK
+        date due_date
+        varchar status
+        int sort_order
+    }
+    evaluations {
+        bigint id PK
+        bigint project_id FK
+        bigint teacher_id FK
+        decimal overall_score
+    }
+    meeting_logs {
+        bigint id PK
+        bigint project_id FK
+        bigint teacher_id FK
+        datetime meeting_date
+    }
+    final_submissions {
+        bigint id PK
+        bigint project_id FK "UK"
+        varchar thesis_path
+        varchar github_repository
+    }
+    announcements {
+        bigint id PK
+        bigint created_by FK
+        boolean is_active
+    }
+    attachments {
+        bigint id PK
+        varchar attachable_type
+        bigint attachable_id
+        bigint uploaded_by FK
+    }
+    activity_logs {
+        bigint id PK
+        bigint user_id FK
+        varchar action
+        varchar subject_type
+    }
+    notifications {
+        uuid id PK
+        varchar notifiable_type
+        bigint notifiable_id
+        timestamp read_at
+    }
+    personal_access_tokens {
+        bigint id PK
+        varchar tokenable_type
+        bigint tokenable_id
+        varchar token UK
+    }

@@ -1,0 +1,24 @@
+{
+	{$CADDY_GLOBAL_OPTIONS}
+
+	frankenphp
+	order php_server before file_server
+}
+
+{$SERVER_NAME:localhost} {
+	log
+	root * /app/public
+	encode zstd gzip
+
+	# Laravel owns the API, the health probe, and /storage (uploaded branding
+	# assets, which the login page loads before authentication).
+	@laravel path /api/* /storage/* /up
+	php_server @laravel
+
+	# Everything else is the SPA: serve the hashed asset when it exists,
+	# otherwise hand back index.html so client-side routes resolve on refresh.
+	handle {
+		try_files {path} /index.html
+		file_server
+	}
+}

@@ -1,0 +1,547 @@
+// =====================================================================
+// SupervisEx (finalyearms) — Database schema
+// Format: DBML  ·  paste into https://dbdiagram.io/d
+// Source of truth: backend/database/migrations/*  (main branch)
+// Framework tables (sessions, cache, jobs, password_reset_tokens) omitted.
+// =====================================================================
+
+// ---------- Identity & access ----------
+
+Table roles {
+  id          bigint      [pk, increment]
+  name        varchar     [unique, not null]
+  slug        varchar     [unique, not null]
+  description varchar
+  created_at  timestamp
+  updated_at  timestamp
+}
+
+Table users {
+  id                bigint    [pk, increment]
+  role_id           bigint    [ref: > roles.id, null]   // nullOnDelete
+  name              varchar   [not null]
+  email             varchar   [unique, not null]
+  phone             varchar
+  email_verified_at timestamp
+  password          varchar   [not null]
+  is_active         boolean   [not null, default: true]
+  remember_token    varchar
+  created_at        timestamp
+  updated_at        timestamp
+}
+
+Table departments {
+  id          bigint   [pk, increment]
+  name        varchar  [not null]
+  code        varchar  [unique, not null]
+  description text
+  created_at  timestamp
+  updated_at  timestamp
+}
+
+Table academic_sessions {
+  id         bigint   [pk, increment]
+  name       varchar  [unique, not null]
+  start_date date     [not null]
+  end_date   date     [not null]
+  is_active  boolean  [not null, default: false]
+  created_at timestamp
+  updated_at timestamp
+}
+
+Table personal_access_tokens {
+  id             bigint   [pk, increment]
+  tokenable_type varchar  [not null]
+  tokenable_id   bigint   [not null]
+  name           text     [not null]
+  token          varchar  [unique, not null]
+  abilities      text
+  last_used_at   timestamp
+  expires_at     timestamp
+  created_at     timestamp
+  updated_at     timestamp
+
+  indexes {
+    (tokenable_type, tokenable_id)
+  }
+}
+
+Table academic_session_dates {
+  id                  bigint    [pk, increment]
+  academic_session_id bigint    [ref: > academic_sessions.id, not null]  // cascadeOnDelete
+  label               varchar   [not null]
+  description         text
+  date                date      [not null]
+  is_deadline         boolean   [not null, default: false]
+  created_at          timestamp
+  updated_at          timestamp
+
+  indexes {
+    (academic_session_id, label) [unique]
+    (academic_session_id, date)
+  }
+}
+
+// Intake cohort, scoped to a department: "2079 Intake" in Computer Science is
+// a different cohort from the same name in Software Engineering.
+Table batches {
+  id            bigint    [pk, increment]
+  department_id bigint    [ref: > departments.id, not null]  // restrictOnDelete
+  name          varchar   [not null]
+  intake_year   smallint  [not null]
+  is_active     boolean   [not null, default: true]
+  created_at    timestamp
+  updated_at    timestamp
+
+  indexes {
+    (department_id, name) [unique]
+    (department_id, intake_year)
+  }
+}
+
+// ---------- People profiles (1:1 with users) ----------
+
+Table teachers {
+  id               bigint   [pk, increment]
+  user_id          bigint   [ref: > users.id, not null]        // cascadeOnDelete
+  department_id    bigint   [ref: > departments.id, not null]  // restrictOnDelete
+  employee_id      varchar  [unique, not null]
+  designation      varchar
+  max_projects     int      [not null, default: 5]  // capacity is counted in projects, not students
+  created_at       timestamp
+  updated_at       timestamp
+}
+
+Table students {
+  id                  bigint   [pk, increment]
+  user_id             bigint   [ref: > users.id, not null]              // cascadeOnDelete
+  department_id       bigint   [ref: > departments.id, not null]        // restrictOnDelete
+  academic_session_id bigint   [ref: > academic_sessions.id, not null]  // restrictOnDelete
+  batch_id            bigint   [ref: > batches.id, null]              // nullOnDelete
+  registration_number varchar  [unique, not null]
+  roll_number         varchar
+  created_at          timestamp
+  updated_at          timestamp
+}
+
+// ---------- Groups & supervision ----------
+
+Table student_groups {
+  id                  bigint   [pk, increment]
+  name                varchar  [not null]
+  supervisor_id       bigint   [ref: > teachers.id, null]              // nullOnDelete
+  academic_session_id bigint   [ref: > academic_sessions.id, not null] // restrictOnDelete
+  is_individual       boolean  [not null, default: true]
+  created_at          timestamp
+  updated_at          timestamp
+}
+
+Table student_group_members {
+  id               bigint   [pk, increment]
+  student_group_id bigint   [ref: > student_groups.id, not null]  // cascadeOnDelete
+  student_id       bigint   [ref: > students.id, not null]        // cascadeOnDelete
+  is_leader        boolean  [not null, default: false]
+  created_at       timestamp
+  updated_at       timestamp
+
+  indexes {
+    (student_group_id, student_id) [unique]
+  }
+}
+
+Table supervisor_assignments {
+  id                  bigint    [pk, increment]
+  student_id          bigint    [ref: > students.id, not null]          // cascadeOnDelete
+  teacher_id          bigint    [ref: > teachers.id, not null]          // cascadeOnDelete
+  academic_session_id bigint    [ref: > academic_sessions.id, not null] // restrictOnDelete
+  assigned_at         timestamp [not null]
+  is_active           boolean   [not null, default: true]
+  created_at          timestamp
+  updated_at          timestamp
+
+  indexes {
+    (student_id, academic_session_id) [unique]  // one supervisor per student per session
+  }
+}
+
+// Students join a team by accepting rather than being added, so membership is
+// always something they agreed to. Declined rows are kept so a lead can see
+// who was asked and what came back.
+Table team_invitations {
+  id               bigint    [pk, increment]
+  student_group_id bigint    [ref: > student_groups.id, not null]  // cascadeOnDelete
+  student_id       bigint    [ref: > students.id, not null]        // the invitee, cascadeOnDelete
+  invited_by       bigint    [ref: > students.id, null]            // nullOnDelete
+  status           varchar   [not null, default: 'pending']        // InvitationStatus enum
+  message          varchar
+  expires_at       timestamp
+  responded_at     timestamp
+  created_at       timestamp
+  updated_at       timestamp
+
+  indexes {
+    (student_group_id, student_id) [unique]  // one live invitation per student per team
+    (student_id, status)
+  }
+}
+
+// ---------- Projects ----------
+
+Table projects {
+  id                  bigint   [pk, increment]
+  title               varchar  [not null]
+  description         text
+  domain              varchar
+  technology_stack    varchar
+  category            varchar
+  status              varchar  [not null, default: 'draft']  // ProjectStatus enum
+  supervisor_id       bigint   [ref: > teachers.id, null]              // nullOnDelete
+  academic_session_id bigint   [ref: > academic_sessions.id, not null] // restrictOnDelete
+  student_group_id    bigint   [ref: > student_groups.id, null]        // nullOnDelete
+  student_id          bigint   [ref: > students.id, null]              // nullOnDelete
+  created_at          timestamp
+  updated_at          timestamp
+}
+
+Table project_members {
+  id         bigint   [pk, increment]
+  project_id bigint   [ref: > projects.id, not null]  // cascadeOnDelete
+  student_id bigint   [ref: > students.id, not null]  // cascadeOnDelete
+  created_at timestamp
+  updated_at timestamp
+
+  indexes {
+    (project_id, student_id) [unique]
+  }
+}
+
+// A project asking a supervisor to take it on. Its own table rather than a
+// status on supervisor_assignments: that table is unique per (student,
+// session), so a declined request would occupy the slot permanently and block
+// asking anyone else. Requests are per PROJECT — a team asks once, as a team.
+Table supervisor_requests {
+  id            bigint    [pk, increment]
+  project_id    bigint    [ref: > projects.id, not null]  // cascadeOnDelete
+  teacher_id    bigint    [ref: > teachers.id, not null]  // cascadeOnDelete
+  requested_by  bigint    [ref: > students.id, null]      // the lead; nullOnDelete
+  status        varchar   [not null, default: 'pending']  // SupervisorRequestStatus enum
+  rationale     text      [not null]                      // the case the team makes
+  response_note varchar                                   // why not, when declined
+  responded_at  timestamp
+  created_at    timestamp
+  updated_at    timestamp
+
+  indexes {
+    (project_id, status)
+    (teacher_id, status)
+  }
+}
+
+// ---------- Proposal workflow (versioned + threaded review) ----------
+
+Table proposal_versions {
+  id                bigint    [pk, increment]
+  project_id        bigint    [ref: > projects.id, not null]  // cascadeOnDelete
+  version_number    int       [not null, default: 1]
+  title             varchar   [not null]
+  abstract          text
+  background        text
+  problem_statement text
+  objectives        text
+  scope             text
+  methodology       text
+  literature_review text
+  timeline          text
+  expected_outcome  text
+  technologies      text
+  references        text
+  pdf_path          varchar
+  status            varchar   [not null, default: 'draft']  // ProposalStatus enum
+  submitted_by      bigint    [ref: > users.id, null]        // nullOnDelete
+  submitted_at      timestamp
+  created_at        timestamp
+  updated_at        timestamp
+
+  indexes {
+    (project_id, version_number) [unique]
+  }
+}
+
+Table proposal_comments {
+  id                  bigint   [pk, increment]
+  proposal_version_id bigint   [ref: > proposal_versions.id, not null]  // cascadeOnDelete
+  user_id             bigint   [ref: > users.id, not null]              // cascadeOnDelete
+  section             varchar
+  comment             text     [not null]
+  action              varchar
+  created_at          timestamp
+  updated_at          timestamp
+}
+
+Table proposal_replies {
+  id                  bigint   [pk, increment]
+  proposal_comment_id bigint   [ref: > proposal_comments.id, not null]  // cascadeOnDelete
+  user_id             bigint   [ref: > users.id, not null]              // cascadeOnDelete
+  reply               text     [not null]
+  attachment_path     varchar
+  created_at          timestamp
+  updated_at          timestamp
+}
+
+// ---------- Progress, milestones & evaluation ----------
+
+Table progress_reports {
+  id                   bigint    [pk, increment]
+  project_id           bigint    [ref: > projects.id, not null]  // cascadeOnDelete
+  title                varchar   [not null]
+  description          text
+  percentage_completed int       [not null, default: 0]  // tinyint 0-100
+  demo_link            varchar
+  git_repository       varchar
+  status               varchar   [not null, default: 'submitted']
+  submitted_by         bigint    [ref: > users.id, not null]  // cascadeOnDelete
+  submitted_at         timestamp [not null]
+  created_at           timestamp
+  updated_at           timestamp
+}
+
+Table progress_comments {
+  id                 bigint   [pk, increment]
+  progress_report_id bigint   [ref: > progress_reports.id, not null]  // cascadeOnDelete
+  user_id            bigint   [ref: > users.id, not null]             // cascadeOnDelete
+  comment            text     [not null]
+  action             varchar
+  created_at         timestamp
+  updated_at         timestamp
+}
+
+Table milestones {
+  id          bigint   [pk, increment]
+  project_id  bigint   [ref: > projects.id, not null]  // cascadeOnDelete
+  title       varchar  [not null]
+  description text
+  due_date    date
+  status      varchar  [not null, default: 'pending']  // MilestoneStatus enum
+  remarks     text
+  sort_order  int      [not null, default: 0]
+  created_at  timestamp
+  updated_at  timestamp
+}
+
+Table evaluations {
+  id             bigint         [pk, increment]
+  project_id     bigint         [ref: > projects.id, not null]  // cascadeOnDelete
+  teacher_id     bigint         [ref: > teachers.id, not null]  // cascadeOnDelete
+  innovation     int            // tinyint, nullable
+  implementation int
+  documentation  int
+  presentation   int
+  testing        int
+  overall_score  decimal(5,2)
+  remarks        text
+  created_at     timestamp
+  updated_at     timestamp
+
+  indexes {
+    (project_id, teacher_id) [unique]  // one evaluation per project per teacher
+  }
+}
+
+Table meeting_logs {
+  id             bigint    [pk, increment]
+  project_id     bigint    [ref: > projects.id, not null]  // cascadeOnDelete
+  teacher_id     bigint    [ref: > teachers.id, not null]  // cascadeOnDelete
+  meeting_date   datetime  [not null]
+  agenda         text
+  discussion     text
+  assigned_tasks text
+  next_meeting   datetime
+  created_at     timestamp
+  updated_at     timestamp
+}
+
+Table final_submissions {
+  id                 bigint    [pk, increment]
+  project_id         bigint    [ref: > projects.id, unique, not null]  // cascadeOnDelete, one per project
+  thesis_path        varchar
+  presentation_path  varchar
+  poster_path        varchar
+  source_code_path   varchar
+  documentation_path varchar
+  demo_video_path    varchar
+  github_repository  varchar
+  submitted_at       timestamp
+  created_at         timestamp
+  updated_at         timestamp
+}
+
+// ---------- Tenant identity ----------
+
+// Single-row settings table. Under the silo model each tenant has its own
+// database, so this holds exactly one row: the institution this deployment
+// serves. Read unauthenticated via GET /api/branding so the login screen can
+// render themed before sign-in.
+Table branding {
+  id                  bigint   [pk, increment]
+  institution_name    varchar  [not null, default: 'FYP Portal']
+  short_name          varchar
+  tagline             varchar
+  logo_path           varchar
+  favicon_path        varchar
+  color_primary       varchar  // hex, e.g. #0f5c63 — drives the primary ramp
+  color_accent        varchar  // hex — drives the accent ramp
+  color_ink           varchar  // hex — darkest neutral
+  color_paper         varchar  // hex — page background
+  font_display        varchar
+  font_sans           varchar
+  font_stylesheet_url varchar  // pinned to fonts.googleapis.com
+  created_at          timestamp
+  updated_at          timestamp
+}
+
+// ---------- Coordinator templates ----------
+
+Table project_types {
+  id                bigint    [pk, increment]
+  name              varchar   [not null]
+  slug              varchar   [unique, not null]
+  description       text
+  requires_employer boolean   [not null, default: false]
+  is_active         boolean   [not null, default: true]
+  is_default        boolean   [not null, default: false]  // shipped with the platform
+  sort_order        int       [not null, default: 0]
+  created_at        timestamp
+  updated_at        timestamp
+}
+
+// Published versions are immutable: editing one forks a new draft at the next
+// version rather than mutating in place, so a template cannot rewrite the plan
+// of a project that already adopted it. parent_id records the lineage.
+Table activity_templates {
+  id              bigint    [pk, increment]
+  project_type_id bigint    [ref: > project_types.id, null]       // cascadeOnDelete
+  parent_id       bigint    [ref: > activity_templates.id, null]  // nullOnDelete
+  name            varchar   [not null]
+  description     text
+  version         int       [not null, default: 1]
+  status          varchar   [not null, default: 'draft']  // TemplateStatus enum
+  published_at    timestamp
+  is_default      boolean   [not null, default: false]
+  is_active       boolean   [not null, default: true]
+  is_sequential   boolean   [not null, default: false]  // items complete in order
+  created_at      timestamp
+  updated_at      timestamp
+
+  indexes {
+    (status, version)
+  }
+}
+
+// `config` holds per-type settings as JSON — an approval gate's approver role
+// means nothing to a recurring log. ActivityItemType::configRules() validates
+// it and rejects unknown keys.
+Table activity_template_items {
+  id                   bigint   [pk, increment]
+  activity_template_id bigint   [ref: > activity_templates.id, not null]  // cascadeOnDelete
+  type                 varchar  [not null, default: 'task']  // ActivityItemType enum
+  title                varchar  [not null]
+  description          text
+  due_offset_days      int      // from project start, not an absolute date
+  config               json     // cadence/occurrences, approver_role, ...
+  blocks_progression   boolean  [not null, default: false]
+  sort_order           int      [not null, default: 0]
+  created_at           timestamp
+  updated_at           timestamp
+
+  indexes {
+    (activity_template_id, sort_order)
+  }
+}
+
+// ---------- Authentication audit ----------
+
+// Separate from activity_logs, which records domain changes by an
+// authenticated user. This records the authentication boundary itself,
+// including failures — where there is often no user to attribute the row to.
+Table auth_audit_logs {
+  id         bigint    [pk, increment]
+  user_id    bigint    [ref: > users.id, null]  // nullOnDelete; null for unknown accounts
+  event      varchar   [not null]               // AuthEvent enum
+  email      varchar                            // as typed, lower-cased
+  succeeded  boolean   [not null, default: true]
+  reason     varchar
+  ip_address varchar
+  user_agent varchar
+  context    json
+  created_at timestamp
+}
+
+// ---------- Cross-cutting (polymorphic) ----------
+
+Table notifications {
+  id              uuid      [pk]
+  type            varchar   [not null]
+  notifiable_type varchar   [not null]
+  notifiable_id   bigint    [not null]
+  data            text      [not null]
+  read_at         timestamp
+  created_at      timestamp
+  updated_at      timestamp
+
+  indexes {
+    (notifiable_type, notifiable_id)
+  }
+}
+
+Table announcements {
+  id           bigint    [pk, increment]
+  created_by   bigint    [ref: > users.id, not null]  // cascadeOnDelete
+  title        varchar   [not null]
+  body         text      [not null]
+  is_active    boolean   [not null, default: true]
+  published_at timestamp
+  created_at   timestamp
+  updated_at   timestamp
+}
+
+Table attachments {
+  id              bigint   [pk, increment]
+  attachable_type varchar  [not null]
+  attachable_id   bigint   [not null]
+  file_name       varchar  [not null]
+  file_path       varchar  [not null]
+  mime_type       varchar
+  file_size       bigint
+  uploaded_by     bigint   [ref: > users.id, not null]  // cascadeOnDelete
+  created_at      timestamp
+  updated_at      timestamp
+
+  indexes {
+    (attachable_type, attachable_id)
+  }
+}
+
+Table activity_logs {
+  id           bigint   [pk, increment]
+  user_id      bigint   [ref: > users.id, null]  // nullOnDelete
+  action       varchar  [not null]
+  subject_type varchar
+  subject_id   bigint
+  old_values   json
+  new_values   json
+  ip_address   varchar
+  created_at   timestamp
+  updated_at   timestamp
+
+  indexes {
+    (subject_type, subject_id)
+  }
+}
+
+// ---------------------------------------------------------------------
+// Polymorphic relations (not drawable as hard FKs in DBML):
+//   attachments.attachable      -> projects | proposal_versions | ... (morphs)
+//   notifications.notifiable    -> users (morphs)
+//   activity_logs.subject       -> any model (nullableMorphs)
+//   personal_access_tokens.tokenable -> users (morphs)
+// ---------------------------------------------------------------------

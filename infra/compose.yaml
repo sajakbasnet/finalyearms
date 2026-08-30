@@ -1,0 +1,129 @@
+# Local / small-deployment topology for the silo model.
+#
+#   traefik   — one entrypoint, routes {slug}.$BASE_DOMAIN to that tenant's container
+#   postgres  — ONE server, one database per tenant, one role per tenant
+#   tenant-*  — one app container per institution
+#
+# "A container per tenant" does not imply "a database server per tenant". A
+# single server with per-tenant databases and per-tenant roles gives the same
+# credential-injection model with one backup target and one thing to tune.
+#
+# Build from the repository root:
+#   docker compose -f infra/compose.yaml build
+#
+# Tenant services below are illustrative. In practice they are driven by the
+# control-plane application:
+#
+#   cd control-plane && php artisan tenant:provision tu "Tribhuvan University" coordinator@tu.edu.np
+#   cd control-plane && php artisan tenant:list
+
+name: supervisex
+
+x-tenant-app: &tenant-app
+  image: supervisex/tenant-app:${IMAGE_TAG:-latest}
+  build:
+    context: ..
+    dockerfile: infra/tenant-app/Dockerfile
+  restart: unless-stopped
+  depends_on:
+    postgres:
+      condition: service_healthy
+  environment: &tenant-env
+    APP_ENV: production
+    APP_DEBUG: "false"
+    # Caddy listens on plain :80; Traefik terminates TLS in front of it.
+    SERVER_NAME: ":80"
+    LOG_CHANNEL: stderr
+    DB_CONNECTION: pgsql
+    DB_HOST: postgres
+    DB_PORT: "5432"
+    SESSION_DRIVER: database
+    CACHE_STORE: database
+    QUEUE_CONNECTION: database
+    FILESYSTEM_DISK: local
+  networks: [edge, data]
+
+services:
+  traefik:
+    image: traefik:v3.3
+    restart: unless-stopped
+    command:
+      - --providers.docker=true
+      - --providers.docker.exposedbydefault=false
+      - --entrypoints.web.address=:80
+      - --entrypoints.web.http.redirections.entrypoint.to=websecure
+      - --entrypoints.web.http.redirections.entrypoint.scheme=https
+      - --entrypoints.websecure.address=:443
+      - --certificatesresolvers.letsencrypt.acme.email=${ACME_EMAIL:?set ACME_EMAIL}
+      - --certificatesresolvers.letsencrypt.acme.storage=/acme/acme.json
+      - --certificatesresolvers.letsencrypt.acme.tlschallenge=true
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      # Read-only: Traefik only needs to discover containers, never control them.
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - traefik-acme:/acme
+    networks: [edge]
+
+  postgres:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD}
+      # Control-plane database. Tenant databases are created by the provisioner
+      # and are never reachable with these superuser credentials from a tenant
+      # container — tenants only ever receive their own scoped role.
+      POSTGRES_DB: control_plane
+    volumes:
+      # No SQL init script: the control-plane schema is owned by that app's
+      # Laravel migrations, so there is one source of truth.
+      #   cd control-plane && php artisan migrate
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks: [data]
+
+  # ---------------------------------------------------------------------
+  # Example tenant. Copy per institution, or let the provisioner emit them.
+  # ---------------------------------------------------------------------
+  tenant-tu:
+    <<: *tenant-app
+    environment:
+      <<: *tenant-env
+      APP_NAME: "Tribhuvan University FYP Portal"
+      APP_URL: "https://tu.${BASE_DOMAIN:?set BASE_DOMAIN}"
+      # Per tenant. Sharing one key across tenants makes signed and encrypted
+      # payloads valid in every other tenant.
+      APP_KEY: ${TU_APP_KEY:?set TU_APP_KEY}
+      DB_DATABASE: tenant_tu
+      DB_USERNAME: tenant_tu
+      DB_PASSWORD: ${TU_DB_PASSWORD:?set TU_DB_PASSWORD}
+      TENANT_INSTITUTION_NAME: "Tribhuvan University"
+      TENANT_ADMIN_EMAIL: ${TU_ADMIN_EMAIL:-registrar@tu.edu.np}
+      TENANT_ADMIN_NAME: "Registrar"
+    volumes:
+      # Theses, posters, and branding assets. Without this they die with the
+      # container.
+      - tenant-tu-storage:/app/storage/app
+    labels:
+      - traefik.enable=true
+      - traefik.docker.network=supervisex_edge
+      - traefik.http.routers.tenant-tu.rule=Host(`tu.${BASE_DOMAIN}`)
+      - traefik.http.routers.tenant-tu.entrypoints=websecure
+      - traefik.http.routers.tenant-tu.tls.certresolver=letsencrypt
+      - traefik.http.services.tenant-tu.loadbalancer.server.port=80
+
+networks:
+  edge:
+  data:
+    # Tenant containers reach Postgres here; nothing external can.
+    internal: true
+
+volumes:
+  postgres-data:
+  traefik-acme:
+  tenant-tu-storage:
