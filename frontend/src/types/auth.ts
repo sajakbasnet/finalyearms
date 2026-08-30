@@ -1,4 +1,17 @@
-export type RoleSlug = 'admin' | 'teacher' | 'student'
+/**
+ * Roles assignable to a user inside a tenant.
+ *
+ * Two roles from the access model are deliberately absent:
+ * - `platform_admin` is a control-plane identity and never appears in a tenant.
+ * - `team_lead` is contextual, derived from group membership rather than
+ *   `users.role_id`, so a team lead is still a `student` here.
+ */
+export type RoleSlug =
+  | 'institution_admin'
+  | 'coordinator'
+  | 'supervisor'
+  | 'student'
+  | 'employer'
 
 export interface Role {
   id: number

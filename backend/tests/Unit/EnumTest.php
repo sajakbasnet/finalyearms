@@ -15,9 +15,43 @@ final class EnumTest extends TestCase
 {
     public function test_user_role_labels(): void
     {
-        $this->assertSame('Admin', UserRole::Admin->label());
-        $this->assertSame('Teacher', UserRole::Teacher->label());
+        $this->assertSame('Platform Admin', UserRole::PlatformAdmin->label());
+        $this->assertSame('Institution Admin', UserRole::InstitutionAdmin->label());
+        $this->assertSame('Coordinator', UserRole::Coordinator->label());
+        $this->assertSame('Supervisor', UserRole::Supervisor->label());
         $this->assertSame('Student', UserRole::Student->label());
+        $this->assertSame('Team Lead', UserRole::TeamLead->label());
+        $this->assertSame('Employer', UserRole::Employer->label());
+    }
+
+    public function test_assignable_roles_exclude_platform_and_contextual_roles(): void
+    {
+        $assignable = array_map(
+            fn (UserRole $role): string => $role->value,
+            UserRole::assignable(),
+        );
+
+        // platform_admin is a control-plane identity; team_lead is derived from
+        // student_group_members.is_leader. Neither belongs in a tenant's roles
+        // table, or an institution admin could grant cross-tenant reach.
+        $this->assertNotContains('platform_admin', $assignable);
+        $this->assertNotContains('team_lead', $assignable);
+
+        $this->assertSame([
+            'institution_admin',
+            'coordinator',
+            'supervisor',
+            'student',
+            'employer',
+        ], $assignable);
+    }
+
+    public function test_platform_and_contextual_flags(): void
+    {
+        $this->assertTrue(UserRole::PlatformAdmin->isPlatformScoped());
+        $this->assertTrue(UserRole::TeamLead->isContextual());
+        $this->assertFalse(UserRole::Coordinator->isPlatformScoped());
+        $this->assertFalse(UserRole::Student->isContextual());
     }
 
     #[DataProvider('proposalStatusProvider')]

@@ -38,7 +38,7 @@ final class AuthApiTest extends TestCase
             'password' => 'password',
         ])
             ->assertOk()
-            ->assertJsonPath('user.role.slug', 'teacher')
+            ->assertJsonPath('user.role.slug', 'supervisor')
             ->assertJsonPath('user.teacher.employee_id', 'EMP-001');
     }
 
@@ -49,7 +49,7 @@ final class AuthApiTest extends TestCase
             'password' => 'password',
         ])
             ->assertOk()
-            ->assertJsonPath('user.role.slug', 'admin');
+            ->assertJsonPath('user.role.slug', 'institution_admin');
     }
 
     public function test_login_fails_with_invalid_credentials(): void

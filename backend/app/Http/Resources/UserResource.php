@@ -4,11 +4,12 @@ declare(strict_types=1);
 
 namespace App\Http\Resources;
 
+use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
 /**
- * @mixin \App\Models\User
+ * @mixin User
  */
 final class UserResource extends JsonResource
 {
@@ -54,7 +55,7 @@ final class UserResource extends JsonResource
                     'id' => $this->student->id,
                     'registration_number' => $this->student->registration_number,
                     'roll_number' => $this->student->roll_number,
-                    'batch' => $this->student->batch,
+                    'batch' => $this->student->batch?->name,
                     'department' => $this->student->relationLoaded('department')
                         ? [
                             'id' => $this->student->department?->id,
