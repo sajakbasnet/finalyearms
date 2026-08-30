@@ -7,7 +7,9 @@ namespace Database\Seeders;
 use App\Enums\MilestoneStatus;
 use App\Enums\ProjectStatus;
 use App\Enums\ProposalStatus;
+use App\Enums\UserRole;
 use App\Models\AcademicSession;
+use App\Models\Batch;
 use App\Models\Department;
 use App\Models\Milestone;
 use App\Models\Project;
@@ -26,23 +28,14 @@ final class DatabaseSeeder extends Seeder
 {
     public function run(): void
     {
-        $adminRole = Role::query()->create([
-            'name' => 'Admin',
-            'slug' => 'admin',
-            'description' => 'System administrator',
-        ]);
+        // Roles come from the shared bootstrap so demo data cannot drift from
+        // what a real tenant is provisioned with.
+        $this->call(TenantBootstrapSeeder::class);
 
-        $teacherRole = Role::query()->create([
-            'name' => 'Teacher',
-            'slug' => 'teacher',
-            'description' => 'Project supervisor',
-        ]);
-
-        $studentRole = Role::query()->create([
-            'name' => 'Student',
-            'slug' => 'student',
-            'description' => 'Final year student',
-        ]);
+        $adminRole = Role::query()->where('slug', UserRole::InstitutionAdmin->value)->firstOrFail();
+        $coordinatorRole = Role::query()->where('slug', UserRole::Coordinator->value)->firstOrFail();
+        $teacherRole = Role::query()->where('slug', UserRole::Supervisor->value)->firstOrFail();
+        $studentRole = Role::query()->where('slug', UserRole::Student->value)->firstOrFail();
 
         $cs = Department::query()->create([
             'name' => 'Computer Science',
@@ -54,6 +47,18 @@ final class DatabaseSeeder extends Seeder
             'name' => 'Software Engineering',
             'code' => 'SE',
             'description' => 'Department of Software Engineering',
+        ]);
+
+        $csBatch = Batch::query()->create([
+            'department_id' => $cs->id,
+            'name' => '2022 Intake',
+            'intake_year' => 2022,
+        ]);
+
+        $seBatch = Batch::query()->create([
+            'department_id' => $se->id,
+            'name' => '2022 Intake',
+            'intake_year' => 2022,
         ]);
 
         $session = AcademicSession::query()->create([
@@ -68,6 +73,16 @@ final class DatabaseSeeder extends Seeder
             'name' => 'System Admin',
             'email' => 'admin@fyp.local',
             'phone' => '9800000001',
+            'password' => Hash::make('password'),
+            'email_verified_at' => now(),
+            'is_active' => true,
+        ]);
+
+        User::query()->create([
+            'role_id' => $coordinatorRole->id,
+            'name' => 'Programme Coordinator',
+            'email' => 'coordinator@fyp.local',
+            'phone' => '9800000005',
             'password' => Hash::make('password'),
             'email_verified_at' => now(),
             'is_active' => true,
@@ -88,7 +103,7 @@ final class DatabaseSeeder extends Seeder
             'department_id' => $cs->id,
             'employee_id' => 'EMP-001',
             'designation' => 'Associate Professor',
-            'maximum_students' => 8,
+            'max_projects' => 8,
         ]);
 
         $teacherUser2 = User::query()->create([
@@ -106,7 +121,7 @@ final class DatabaseSeeder extends Seeder
             'department_id' => $se->id,
             'employee_id' => 'EMP-002',
             'designation' => 'Assistant Professor',
-            'maximum_students' => 6,
+            'max_projects' => 6,
         ]);
 
         $studentUser = User::query()->create([
@@ -125,7 +140,7 @@ final class DatabaseSeeder extends Seeder
             'academic_session_id' => $session->id,
             'registration_number' => 'CS-2022-001',
             'roll_number' => '22CS001',
-            'batch' => '2022',
+            'batch_id' => $csBatch->id,
         ]);
 
         $studentUser2 = User::query()->create([
@@ -144,7 +159,7 @@ final class DatabaseSeeder extends Seeder
             'academic_session_id' => $session->id,
             'registration_number' => 'SE-2022-014',
             'roll_number' => '22SE014',
-            'batch' => '2022',
+            'batch_id' => $seBatch->id,
         ]);
 
         SupervisorAssignment::query()->create([
