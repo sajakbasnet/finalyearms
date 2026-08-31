@@ -148,7 +148,9 @@ export function AppLayout({ children }: { children?: ReactNode }) {
           >
             Menu
           </button>
-          <p className="text-sm text-[var(--color-ink-muted)]">{branding.tagline}</p>
+          {branding.tagline && (
+            <p className="text-sm text-[var(--color-ink-muted)]">{branding.tagline}</p>
+          )}
         </header>
         <main className="px-4 py-6 lg:px-8 lg:py-8">{children ?? <Outlet />}</main>
       </div>

@@ -1,4 +1,4 @@
-import type { Branding } from '../types/branding'
+import { isBranding, type Branding } from '../types/branding'
 
 /**
  * Caches the resolved branding per hostname so repeat visits paint themed
@@ -15,7 +15,12 @@ function cacheKey(): string {
 export function readCachedBranding(): Branding | null {
   try {
     const stored = localStorage.getItem(cacheKey())
-    return stored ? (JSON.parse(stored) as Branding) : null
+    if (!stored) {
+      return null
+    }
+
+    const parsed: unknown = JSON.parse(stored)
+    return isBranding(parsed) ? parsed : null
   } catch {
     // Private mode, blocked storage, or a stale shape — fall back to defaults.
     return null

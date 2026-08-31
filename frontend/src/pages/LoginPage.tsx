@@ -79,9 +79,11 @@ export function LoginPage() {
       <div className="relative mx-auto grid min-h-screen max-w-6xl items-center gap-10 px-6 py-12 lg:grid-cols-[1.1fr_0.9fr]">
         <section className="animate-[fadeRise_700ms_ease-out]">
           <BrandMark variant="hero" className="mb-4" />
-          <h1 className="max-w-xl text-2xl font-medium leading-snug text-[var(--color-paper)]/90 sm:text-3xl">
-            {branding.tagline}
-          </h1>
+          {branding.tagline && (
+            <h1 className="max-w-xl text-2xl font-medium leading-snug text-[var(--color-paper)]/90 sm:text-3xl">
+              {branding.tagline}
+            </h1>
+          )}
           <p className="mt-5 max-w-lg text-base leading-relaxed text-[var(--color-paper)]/70">
             Sign in as a student or supervisor to continue your final year project workflow.
           </p>

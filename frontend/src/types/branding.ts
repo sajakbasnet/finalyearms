@@ -43,3 +43,12 @@ export const defaultBranding: Branding = {
   font_sans: null,
   font_stylesheet_url: null,
 }
+
+/** Guards against malformed API responses and stale cache entries. */
+export function isBranding(value: unknown): value is Branding {
+  return (
+    typeof value === 'object'
+    && value !== null
+    && typeof (value as Branding).institution_name === 'string'
+  )
+}

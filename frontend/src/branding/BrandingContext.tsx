@@ -23,7 +23,7 @@ export function BrandingProvider({ children }: { children: ReactNode }) {
 
     void fetchBranding()
       .then((live) => {
-        if (cancelled) {
+        if (cancelled || !live) {
           return
         }
         setBranding(live)
