@@ -17,24 +17,28 @@
   --font-sans: "Manrope", ui-sans-serif, system-ui, sans-serif;
 
   /* Neutrals */
-  --color-ink: #0f1c24;
-  --color-ink-deep: #071318;
-  --color-ink-muted: #4a5d68;
-  --color-paper: #f3efe6;
-  --color-paper-deep: #e7e0d2;
+  --color-ink: #0f172a;
+  --color-ink-deep: #020617;
+  --color-ink-muted: #64748b;
+  --color-paper: #f8fafc;
+  --color-paper-deep: #e2e8f0;
 
-  /* Primary */
-  --color-sea: #0f5c63;
-  --color-sea-deep: #0a3f45;
-  --color-sea-soft: #d7ecee;
+  /* Primary (Blue) */
+  --color-sea: #2563eb;
+  --color-sea-deep: #1e40af;
+  --color-sea-soft: #dbeafe;
 
-  /* Accent */
-  --color-amber: #c47a2c;
-  --color-amber-soft: #f3e0c8;
+  /* Accent (Sky) */
+  --color-amber: #0284c7;
+  --color-amber-soft: #e0f2fe;
 
   /* Status — fixed */
-  --color-danger: #a63d3d;
-  --color-success: #2f6b4f;
+  --color-danger: #dc2626;
+  --color-success: #16a34a;
+
+  /* Shell Blue Tokens */
+  --color-sidebar: #0f2b5c;
+  --color-header: #1e40af;
 }
 
 /*
@@ -49,24 +53,21 @@
   --tint-amber: color-mix(in srgb, var(--color-amber) 14%, transparent);
 
   /* Translucent paper surfaces (sticky header, login card). */
-  --surface-veil: color-mix(in srgb, var(--color-paper) 92%, transparent);
-  --surface-card: color-mix(in srgb, var(--color-paper) 96%, transparent);
+  --surface-veil: #1e40af;
+  --surface-card: #ffffff;
   --surface-hairline: color-mix(in srgb, var(--color-paper) 8%, transparent);
 
   /*
-   * Raised card surface, sitting above --color-paper. Plain white for the
-   * stock palette; applyBranding() re-derives it from the tenant's paper so
-   * cards don't stay stark white on a tinted or dark background.
+   * Raised card surface, sitting above --color-paper. Pure white for tables and cards.
    */
   --color-surface: #ffffff;
 
   /*
    * Foreground colours for text sitting on top of a brand surface.
-   * Defaults suit the stock palette; applyBranding() recomputes them from the
-   * tenant's colours so a light brand colour doesn't produce white-on-white.
    */
   --color-on-brand: #ffffff;
   --color-on-ink: #ffffff;
+  --color-on-header: #ffffff;
 }
 
 * {

@@ -38,7 +38,12 @@ export const defaultBranding: Branding = {
   tagline: 'Submit proposals, track progress, and stay in sync with your supervisor.',
   logo_url: null,
   favicon_url: null,
-  colors: { primary: null, accent: null, ink: null, paper: null },
+  colors: {
+    primary: '#2563eb',
+    accent: '#0284c7',
+    ink: '#0f2b5c',
+    paper: '#f8fafc',
+  },
   font_display: null,
   font_sans: null,
   font_stylesheet_url: null,

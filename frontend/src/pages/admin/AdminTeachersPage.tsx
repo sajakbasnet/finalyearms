@@ -9,6 +9,7 @@ import {
   type DepartmentOption,
   type TeacherListItem,
 } from '../../api/admin'
+import { Modal } from '../../components/Modal'
 
 const emptyForm = {
   name: '',
@@ -28,6 +29,7 @@ export function AdminTeachersPage() {
   const [search, setSearch] = useState('')
   const [form, setForm] = useState(emptyForm)
   const [editingId, setEditingId] = useState<number | null>(null)
+  const [isModalOpen, setIsModalOpen] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
   const [isSaving, setIsSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -63,6 +65,14 @@ export function AdminTeachersPage() {
     return () => window.clearTimeout(timer)
   }, [departmentFilter, search])
 
+  function openCreate() {
+    setEditingId(null)
+    setForm(emptyForm)
+    setError(null)
+    setSuccess(null)
+    setIsModalOpen(true)
+  }
+
   function startEdit(teacher: TeacherListItem) {
     setEditingId(teacher.id)
     setForm({
@@ -77,9 +87,11 @@ export function AdminTeachersPage() {
     })
     setSuccess(null)
     setError(null)
+    setIsModalOpen(true)
   }
 
-  function resetForm() {
+  function closeModal() {
+    setIsModalOpen(false)
     setEditingId(null)
     setForm(emptyForm)
   }
@@ -114,7 +126,7 @@ export function AdminTeachersPage() {
         await createTeacher({ ...payload, password: payload.password })
         setSuccess('Teacher created and assigned to department.')
       }
-      resetForm()
+      closeModal()
       await loadTeachers()
     } catch (err) {
       setError(extractError(err, 'Could not save teacher.'))
@@ -132,7 +144,7 @@ export function AdminTeachersPage() {
       await deleteTeacher(id)
       setSuccess('Teacher deleted.')
       if (editingId === id) {
-        resetForm()
+        closeModal()
       }
       await loadTeachers()
     } catch (err) {
@@ -141,108 +153,134 @@ export function AdminTeachersPage() {
   }
 
   return (
-    <div className="space-y-6">
-      <header>
-        <h1 className="font-[family-name:var(--font-display)] text-4xl text-[var(--color-sea-deep)]">
-          Teachers
-        </h1>
-        <p className="mt-2 text-[var(--color-ink-muted)]">
-          Insert teachers and assign each one to a final-year department.
-        </p>
-      </header>
+    <div className="space-y-6 animate-[fadeRise_500ms_ease-out]">
+      <div className="flex flex-wrap items-center justify-between gap-4">
+        <div>
+          <h1 className="text-3xl font-bold text-slate-900 tracking-tight">Supervisors & Teachers</h1>
+          <p className="mt-1 text-slate-500">
+            Manage academic supervisors and their departmental supervision capacities.
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={openCreate}
+          className="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-700 active:bg-blue-800"
+        >
+          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 4v16m8-8H4" />
+          </svg>
+          Add Teacher
+        </button>
+      </div>
 
-      {error && <p className="text-[var(--color-danger)]">{error}</p>}
-      {success && <p className="text-[var(--color-success)]">{success}</p>}
+      {error && (
+        <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm font-medium text-red-700">
+          {error}
+        </div>
+      )}
+      {success && (
+        <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-sm font-medium text-emerald-800">
+          {success}
+        </div>
+      )}
 
-      <div className="grid gap-3 md:grid-cols-2">
+      {/* Filter toolbar */}
+      <div className="grid gap-4 sm:grid-cols-[240px_1fr] rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
         <select
           value={departmentFilter}
           onChange={(e) => setDepartmentFilter(e.target.value)}
-          className="rounded-lg border border-[var(--color-paper-deep)] bg-[var(--color-surface)] px-3 py-2.5"
+          className="rounded-xl border border-slate-300 bg-white px-3.5 py-2 text-sm text-slate-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
         >
-          <option value="">All departments</option>
+          <option value="">All Departments</option>
           {departments.map((department) => (
             <option key={department.id} value={department.id}>
-              {department.name}
+              {department.name} ({department.code})
             </option>
           ))}
         </select>
-        <input
-          type="search"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          placeholder="Search name, email, employee ID…"
-          className="rounded-lg border border-[var(--color-paper-deep)] bg-[var(--color-surface)] px-3 py-2.5"
-        />
+        <div className="relative">
+          <input
+            type="search"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search by name, email, employee ID…"
+            className="w-full rounded-xl border border-slate-300 bg-white px-3.5 py-2 pl-10 text-sm text-slate-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
+          />
+          <svg
+            className="absolute left-3.5 top-2.5 h-4 w-4 text-slate-400"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+          >
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+          </svg>
+        </div>
       </div>
 
-      <div className="grid gap-6 xl:grid-cols-[1fr_1.35fr]">
-        <form onSubmit={handleSubmit} className="rounded-xl border border-[var(--color-paper-deep)] bg-[var(--color-surface)]/80 p-5">
-          <h2 className="font-[family-name:var(--font-display)] text-2xl text-[var(--color-sea-deep)]">
-            {editingId ? 'Edit teacher' : 'Add teacher'}
-          </h2>
-
-          <div className="mt-4 grid gap-3">
-            <input required placeholder="Full name" value={form.name} onChange={(e) => setForm((p) => ({ ...p, name: e.target.value }))} className="rounded-lg border border-[var(--color-paper-deep)] px-3 py-2.5" />
-            <input required type="email" placeholder="Email" value={form.email} onChange={(e) => setForm((p) => ({ ...p, email: e.target.value }))} className="rounded-lg border border-[var(--color-paper-deep)] px-3 py-2.5" />
-            <input placeholder="Phone" value={form.phone} onChange={(e) => setForm((p) => ({ ...p, phone: e.target.value }))} className="rounded-lg border border-[var(--color-paper-deep)] px-3 py-2.5" />
-            <input required={!editingId} type="password" placeholder={editingId ? 'New password (optional)' : 'Password'} value={form.password} onChange={(e) => setForm((p) => ({ ...p, password: e.target.value }))} className="rounded-lg border border-[var(--color-paper-deep)] px-3 py-2.5" />
-            <input required placeholder="Employee ID" value={form.employee_id} onChange={(e) => setForm((p) => ({ ...p, employee_id: e.target.value }))} className="rounded-lg border border-[var(--color-paper-deep)] px-3 py-2.5" />
-            <input placeholder="Designation" value={form.designation} onChange={(e) => setForm((p) => ({ ...p, designation: e.target.value }))} className="rounded-lg border border-[var(--color-paper-deep)] px-3 py-2.5" />
-            <select required value={form.department_id} onChange={(e) => setForm((p) => ({ ...p, department_id: e.target.value }))} className="rounded-lg border border-[var(--color-paper-deep)] px-3 py-2.5">
-              <option value="">Assign department</option>
-              {departments.map((department) => (
-                <option key={department.id} value={department.id}>
-                  {department.name} ({department.code})
-                </option>
-              ))}
-            </select>
-            <input type="number" min={1} max={50} placeholder="Max students" value={form.max_projects} onChange={(e) => setForm((p) => ({ ...p, max_projects: e.target.value }))} className="rounded-lg border border-[var(--color-paper-deep)] px-3 py-2.5" />
-          </div>
-
-          <div className="mt-4 flex gap-2">
-            <button type="submit" disabled={isSaving} className="rounded-lg bg-[var(--color-sea)] px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-70">
-              {isSaving ? 'Saving…' : editingId ? 'Update' : 'Create teacher'}
-            </button>
-            {editingId && (
-              <button type="button" onClick={resetForm} className="rounded-lg border border-[var(--color-paper-deep)] px-4 py-2.5 text-sm">
-                Cancel
-              </button>
-            )}
-          </div>
-        </form>
-
-        <div className="overflow-x-auto rounded-xl border border-[var(--color-paper-deep)] bg-[var(--color-surface)]/80">
-          {isLoading ? (
-            <p className="px-4 py-6 text-[var(--color-ink-muted)]">Loading…</p>
-          ) : (
-            <table className="w-full min-w-[720px] text-left text-sm">
-              <thead className="bg-[var(--color-paper-deep)]/60 text-[var(--color-ink-muted)]">
+      {/* Details Table */}
+      <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+        {isLoading ? (
+          <div className="py-12 text-center text-slate-400">Loading supervisors…</div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-sm">
+              <thead className="border-b border-slate-200 bg-slate-50/80 text-xs font-semibold uppercase tracking-wider text-slate-600">
                 <tr>
-                  <th className="px-4 py-3 font-medium">Teacher</th>
-                  <th className="px-4 py-3 font-medium">Department</th>
-                  <th className="px-4 py-3 font-medium">Load</th>
-                  <th className="px-4 py-3 font-medium">Actions</th>
+                  <th className="px-6 py-4">Supervisor</th>
+                  <th className="px-6 py-4">Employee ID</th>
+                  <th className="px-6 py-4">Department</th>
+                  <th className="px-6 py-4">Designation</th>
+                  <th className="px-6 py-4">Max Projects</th>
+                  <th className="px-6 py-4 text-right">Actions</th>
                 </tr>
               </thead>
-              <tbody>
+              <tbody className="divide-y divide-slate-100 bg-white">
                 {teachers.length === 0 ? (
                   <tr>
-                    <td colSpan={4} className="px-4 py-6 text-[var(--color-ink-muted)]">No teachers found.</td>
+                    <td colSpan={6} className="px-6 py-12 text-center text-slate-500">
+                      No teachers found. Click &quot;Add Teacher&quot; above to register one.
+                    </td>
                   </tr>
                 ) : (
                   teachers.map((teacher) => (
-                    <tr key={teacher.id} className="border-t border-[var(--color-paper-deep)]">
-                      <td className="px-4 py-3">
-                        <p className="font-semibold">{teacher.name}</p>
-                        <p className="text-[var(--color-ink-muted)]">{teacher.employee_id} · {teacher.email}</p>
+                    <tr key={teacher.id} className="transition hover:bg-blue-50/30">
+                      <td className="px-6 py-4">
+                        <div className="font-semibold text-slate-900">{teacher.name}</div>
+                        <div className="text-xs text-slate-500">{teacher.email}</div>
+                        {teacher.phone && <div className="text-xs text-slate-400">{teacher.phone}</div>}
                       </td>
-                      <td className="px-4 py-3">{teacher.department?.name ?? '—'}</td>
-                      <td className="px-4 py-3">{teacher.active_students_count}/{teacher.max_projects}</td>
-                      <td className="px-4 py-3">
-                        <div className="flex gap-2">
-                          <button type="button" onClick={() => startEdit(teacher)} className="text-[var(--color-sea)] hover:underline">Edit</button>
-                          <button type="button" onClick={() => void handleDelete(teacher.id)} className="text-[var(--color-danger)] hover:underline">Delete</button>
+                      <td className="px-6 py-4 font-mono text-xs text-slate-600">
+                        {teacher.employee_id}
+                      </td>
+                      <td className="px-6 py-4">
+                        <span className="inline-flex items-center rounded-md bg-blue-50 px-2.5 py-1 text-xs font-semibold text-blue-700 ring-1 ring-inset ring-blue-700/10">
+                          {teacher.department?.name ?? '—'}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 text-slate-700 font-medium">
+                        {teacher.designation || <span className="text-slate-400 italic">—</span>}
+                      </td>
+                      <td className="px-6 py-4 font-semibold text-slate-800">
+                        <span className="inline-flex items-center rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-medium text-slate-800">
+                          {teacher.max_projects} projects max
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 text-right whitespace-nowrap">
+                        <div className="inline-flex items-center gap-2">
+                          <button
+                            type="button"
+                            onClick={() => startEdit(teacher)}
+                            className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-semibold text-blue-600 hover:bg-blue-50 hover:border-blue-200 transition"
+                          >
+                            Edit
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => void handleDelete(teacher.id)}
+                            className="rounded-lg border border-red-200 px-3 py-1.5 text-xs font-semibold text-red-600 hover:bg-red-50 hover:border-red-300 transition"
+                          >
+                            Delete
+                          </button>
                         </div>
                       </td>
                     </tr>
@@ -250,9 +288,144 @@ export function AdminTeachersPage() {
                 )}
               </tbody>
             </table>
-          )}
-        </div>
+          </div>
+        )}
       </div>
+
+      {/* Modal Form */}
+      <Modal
+        isOpen={isModalOpen}
+        onClose={closeModal}
+        maxWidth="xl"
+        title={editingId ? 'Edit Teacher' : 'Add New Teacher'}
+        subtitle={
+          editingId
+            ? 'Update teacher profile, department and project limits.'
+            : 'Register a teacher account and assign them to an academic department.'
+        }
+      >
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="grid gap-4 sm:grid-cols-2">
+            <label className="block space-y-1.5 text-sm font-medium text-slate-700">
+              <span>Full Name</span>
+              <input
+                required
+                placeholder="Dr. Jane Doe"
+                value={form.name}
+                onChange={(e) => setForm((p) => ({ ...p, name: e.target.value }))}
+                className="w-full rounded-xl border border-slate-300 bg-white px-3.5 py-2.5 text-slate-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
+              />
+            </label>
+
+            <label className="block space-y-1.5 text-sm font-medium text-slate-700">
+              <span>Email Address</span>
+              <input
+                required
+                type="email"
+                placeholder="jane.doe@univ.edu"
+                value={form.email}
+                onChange={(e) => setForm((p) => ({ ...p, email: e.target.value }))}
+                className="w-full rounded-xl border border-slate-300 bg-white px-3.5 py-2.5 text-slate-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
+              />
+            </label>
+          </div>
+
+          <div className="grid gap-4 sm:grid-cols-2">
+            <label className="block space-y-1.5 text-sm font-medium text-slate-700">
+              <span>Employee ID</span>
+              <input
+                required
+                placeholder="EMP-1024"
+                value={form.employee_id}
+                onChange={(e) => setForm((p) => ({ ...p, employee_id: e.target.value }))}
+                className="w-full rounded-xl border border-slate-300 bg-white px-3.5 py-2.5 text-slate-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
+              />
+            </label>
+
+            <label className="block space-y-1.5 text-sm font-medium text-slate-700">
+              <span>Designation</span>
+              <input
+                placeholder="Associate Professor"
+                value={form.designation}
+                onChange={(e) => setForm((p) => ({ ...p, designation: e.target.value }))}
+                className="w-full rounded-xl border border-slate-300 bg-white px-3.5 py-2.5 text-slate-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
+              />
+            </label>
+          </div>
+
+          <div className="grid gap-4 sm:grid-cols-2">
+            <label className="block space-y-1.5 text-sm font-medium text-slate-700">
+              <span>Department</span>
+              <select
+                required
+                value={form.department_id}
+                onChange={(e) => setForm((p) => ({ ...p, department_id: e.target.value }))}
+                className="w-full rounded-xl border border-slate-300 bg-white px-3.5 py-2.5 text-slate-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
+              >
+                <option value="">Assign Department</option>
+                {departments.map((dept) => (
+                  <option key={dept.id} value={dept.id}>
+                    {dept.name} ({dept.code})
+                  </option>
+                ))}
+              </select>
+            </label>
+
+            <label className="block space-y-1.5 text-sm font-medium text-slate-700">
+              <span>Max Projects Supervised</span>
+              <input
+                type="number"
+                min={1}
+                max={50}
+                value={form.max_projects}
+                onChange={(e) => setForm((p) => ({ ...p, max_projects: e.target.value }))}
+                className="w-full rounded-xl border border-slate-300 bg-white px-3.5 py-2.5 text-slate-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
+              />
+            </label>
+          </div>
+
+          <div className="grid gap-4 sm:grid-cols-2">
+            <label className="block space-y-1.5 text-sm font-medium text-slate-700">
+              <span>Phone Number (Optional)</span>
+              <input
+                placeholder="+1 555-0199"
+                value={form.phone}
+                onChange={(e) => setForm((p) => ({ ...p, phone: e.target.value }))}
+                className="w-full rounded-xl border border-slate-300 bg-white px-3.5 py-2.5 text-slate-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
+              />
+            </label>
+
+            <label className="block space-y-1.5 text-sm font-medium text-slate-700">
+              <span>{editingId ? 'New Password (leave blank to keep current)' : 'Account Password'}</span>
+              <input
+                required={!editingId}
+                type="password"
+                placeholder="••••••••"
+                value={form.password}
+                onChange={(e) => setForm((p) => ({ ...p, password: e.target.value }))}
+                className="w-full rounded-xl border border-slate-300 bg-white px-3.5 py-2.5 text-slate-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
+              />
+            </label>
+          </div>
+
+          <div className="mt-6 flex justify-end gap-3 border-t border-slate-100 pt-4">
+            <button
+              type="button"
+              onClick={closeModal}
+              className="rounded-xl border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50 transition"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={isSaving}
+              className="rounded-xl bg-blue-600 px-5 py-2 text-sm font-semibold text-white shadow-sm hover:bg-blue-700 disabled:opacity-60 transition"
+            >
+              {isSaving ? 'Saving…' : editingId ? 'Update Teacher' : 'Create Teacher'}
+            </button>
+          </div>
+        </form>
+      </Modal>
     </div>
   )
 }

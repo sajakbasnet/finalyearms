@@ -16,19 +16,20 @@ export function BrandMark({
   const { branding } = useBranding()
   const isHero = variant === 'hero'
 
+  const institutionName = branding?.institution_name?.trim() || 'FYP Portal'
+  const shortName = branding?.short_name?.trim() || institutionName
+
   if (branding.logo_url) {
     return (
       <img
         src={branding.logo_url}
-        alt={branding.institution_name}
+        alt={institutionName}
         className={`${isHero ? 'max-h-20' : 'max-h-10'} w-auto object-contain ${className}`}
       />
     )
   }
 
-  const text = isHero
-    ? branding.institution_name
-    : (branding.short_name ?? branding.institution_name)
+  const text = isHero ? institutionName : shortName
 
   return (
     <p

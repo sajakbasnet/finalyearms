@@ -92,6 +92,8 @@ export function applyBranding(branding: Branding, target?: HTMLElement): void {
       '--color-sea-deep': mix(primary, 70, 'black'),
       '--color-sea-soft': mix(primary, 16, 'white'),
       '--color-on-brand': readableForeground(primary),
+      '--color-header': primary,
+      '--color-on-header': readableForeground(primary),
     })
   }
 
@@ -108,18 +110,15 @@ export function applyBranding(branding: Branding, target?: HTMLElement): void {
       '--color-ink-deep': mix(ink, 70, 'black'),
       '--color-ink-muted': mix(ink, 68, 'white'),
       '--color-on-ink': readableForeground(ink),
+      '--color-sidebar': ink,
     })
   }
 
   if (paper) {
-    // Cards sit one step above the page background. A dark paper needs only a
-    // slight lift to read as raised; a light paper wants to go near-white.
-    const paperIsDark = readableForeground(paper) === WHITE
-
     setVars(root, {
       '--color-paper': paper,
       '--color-paper-deep': mix(paper, 88, 'black'),
-      '--color-surface': paperIsDark ? mix(paper, 88, 'white') : mix(paper, 25, 'white'),
+      '--color-surface': WHITE,
     })
   }
 
@@ -137,7 +136,7 @@ function applyDocumentChrome(branding: Branding): void {
     return
   }
 
-  document.title = branding.institution_name
+  document.title = branding.institution_name?.trim() || 'FYP Portal'
 
   if (branding.favicon_url) {
     let link = document.querySelector<HTMLLinkElement>('link[rel="icon"]')

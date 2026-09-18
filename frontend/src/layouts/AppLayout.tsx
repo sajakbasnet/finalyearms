@@ -28,11 +28,15 @@ const roleHomeLabel: Record<RoleSlug, string> = {
 const navByRole: Record<RoleSlug, NavItem[]> = {
   institution_admin: [
     { to: '/dashboard', label: 'Dashboard', end: true },
+    { to: '/admin/users', label: 'Users & Roles' },
+    { to: '/admin/branding', label: 'Portal Branding & Settings' },
     { to: '/admin/departments', label: 'Departments' },
     { to: '/admin/teachers', label: 'Supervisors' },
     { to: '/admin/students', label: 'Students' },
     { to: '/admin/batches', label: 'Batches' },
     { to: '/admin/sessions', label: 'Academic Calendar' },
+    { to: '/admin/assignments', label: 'Supervisor Assignments' },
+    { to: '/admin/proposals', label: 'Proposals Oversight' },
   ],
   coordinator: [
     { to: '/dashboard', label: 'Dashboard', end: true },
@@ -67,10 +71,10 @@ const navByRole: Record<RoleSlug, NavItem[]> = {
 
 function navClass(isActive: boolean): string {
   return [
-    'block rounded-lg px-3 py-2.5 text-sm transition',
+    'block rounded-lg px-3.5 py-2.5 text-sm transition font-medium',
     isActive
-      ? 'bg-[var(--color-sea)] font-semibold text-[var(--color-on-brand)]'
-      : 'text-[var(--color-on-ink)]/75 hover:bg-[var(--color-on-ink)]/10 hover:text-[var(--color-on-ink)]',
+      ? 'bg-[var(--color-sea)] text-white shadow-sm font-semibold'
+      : 'text-white/80 hover:bg-white/10 hover:text-white',
   ].join(' ')
 }
 
@@ -87,23 +91,25 @@ export function AppLayout({ children }: { children?: ReactNode }) {
         <button
           type="button"
           aria-label="Close menu"
-          className="fixed inset-0 z-30 bg-black/40 lg:hidden"
+          className="fixed inset-0 z-30 bg-black/50 backdrop-blur-sm lg:hidden"
           onClick={() => setMobileOpen(false)}
         />
       )}
 
       <aside
         className={[
-          'fixed inset-y-0 left-0 z-40 flex w-72 flex-col bg-[var(--color-ink)] text-[var(--color-on-ink)] transition-transform lg:static lg:translate-x-0',
+          'fixed inset-y-0 left-0 z-40 flex w-72 flex-col bg-[var(--color-sidebar)] text-white shadow-xl transition-transform lg:static lg:translate-x-0',
           mobileOpen ? 'translate-x-0' : '-translate-x-full',
         ].join(' ')}
       >
-        <div className="border-b border-[var(--color-on-ink)]/10 px-5 py-5">
-          <BrandMark variant="sidebar" />
-          <p className="mt-1 text-sm text-[var(--color-on-ink)]/60">{roleHomeLabel[roleSlug]}</p>
+        <div className="border-b border-white/10 px-6 py-5 bg-black/15">
+          <BrandMark variant="sidebar" className="text-white" />
+          <p className="mt-1.5 text-xs uppercase tracking-wider font-semibold text-white/80">
+            {roleHomeLabel[roleSlug]}
+          </p>
         </div>
 
-        <nav className="flex-1 space-y-1 overflow-y-auto px-3 py-4">
+        <nav className="flex-1 space-y-1.5 overflow-y-auto px-4 py-5">
           {items.map((item) => (
             <NavLink
               key={item.to}
@@ -117,42 +123,50 @@ export function AppLayout({ children }: { children?: ReactNode }) {
           ))}
         </nav>
 
-        <div className="border-t border-[var(--color-on-ink)]/10 px-5 py-4">
-          <p className="truncate text-sm font-semibold">{user?.name}</p>
-          <p className="text-xs uppercase tracking-[0.14em] text-[var(--color-on-ink)]/50">
+        <div className="border-t border-white/10 px-5 py-4 bg-black/20">
+          <p className="truncate text-sm font-semibold text-white">{user?.name}</p>
+          <p className="text-xs uppercase tracking-[0.14em] text-white/70">
             {user?.role?.name}
           </p>
           <NavLink
             to="/account/password"
             onClick={() => setMobileOpen(false)}
-            className="mt-3 block text-xs text-[var(--color-on-ink)]/60 hover:text-[var(--color-on-ink)]"
+            className="mt-3 block text-xs text-white/80 hover:text-white transition"
           >
             Change password
           </NavLink>
           <button
             type="button"
             onClick={() => void logout()}
-            className="mt-3 w-full rounded-lg border border-[var(--color-on-ink)]/20 px-3 py-2 text-sm hover:bg-[var(--color-on-ink)]/10"
+            className="mt-3 w-full rounded-lg border border-white/20 px-3 py-2 text-sm text-white hover:bg-white/10 transition"
           >
             Logout
           </button>
         </div>
       </aside>
 
-      <div className="min-w-0 flex-1">
-        <header className="sticky top-0 z-20 flex items-center gap-3 border-b border-[var(--color-paper-deep)] bg-[var(--surface-veil)] px-4 py-3 backdrop-blur lg:px-8">
-          <button
-            type="button"
-            className="rounded-lg border border-[var(--color-paper-deep)] bg-[var(--color-surface)] px-3 py-2 text-sm lg:hidden"
-            onClick={() => setMobileOpen(true)}
-          >
-            Menu
-          </button>
-          {branding.tagline && (
-            <p className="text-sm text-[var(--color-ink-muted)]">{branding.tagline}</p>
-          )}
+      <div className="min-w-0 flex-1 flex flex-col">
+        <header className="sticky top-0 z-20 flex items-center justify-between border-b border-black/10 bg-[var(--color-header)] px-4 py-3.5 shadow-sm text-white lg:px-8">
+          <div className="flex items-center gap-3">
+            <button
+              type="button"
+              className="rounded-lg border border-white/20 bg-white/10 px-3 py-1.5 text-sm font-medium text-white hover:bg-white/20 transition lg:hidden"
+              onClick={() => setMobileOpen(true)}
+            >
+              Menu
+            </button>
+            <p className="text-sm text-white/90 font-medium line-clamp-1">
+              {branding.tagline || branding.institution_name || 'FYP Portal'}
+            </p>
+          </div>
+          <div className="flex items-center gap-4">
+            <span className="hidden sm:inline-flex items-center gap-2 rounded-full bg-white/15 px-3 py-1 text-xs font-medium text-white border border-white/20">
+              <span className="h-2 w-2 rounded-full bg-emerald-400"></span>
+              {user?.name}
+            </span>
+          </div>
         </header>
-        <main className="px-4 py-6 lg:px-8 lg:py-8">{children ?? <Outlet />}</main>
+        <main className="flex-1 px-4 py-6 lg:px-8 lg:py-8">{children ?? <Outlet />}</main>
       </div>
     </div>
   )

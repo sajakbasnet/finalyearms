@@ -13,13 +13,8 @@ import {
   type Team,
 } from '../../api/team'
 import { useAuth } from '../../contexts/AuthContext'
+import { Modal } from '../../components/Modal'
 
-/**
- * Forming a project and a team.
- *
- * The first step of the Sprint 3 chain: a project exists before it has a
- * supervisor, so this page comes before the supervisor directory.
- */
 export function StudentTeamPage() {
   const { user } = useAuth()
   const [team, setTeam] = useState<Team | null>(null)
@@ -30,6 +25,8 @@ export function StudentTeamPage() {
   const [success, setSuccess] = useState<string | null>(null)
 
   const [projectForm, setProjectForm] = useState({ title: '', is_team: true, team_name: '' })
+  const [isProjectModalOpen, setIsProjectModalOpen] = useState(false)
+  const [isInviteModalOpen, setIsInviteModalOpen] = useState(false)
   const [inviteId, setInviteId] = useState('')
   const [inviteMessage, setInviteMessage] = useState('')
 
@@ -48,8 +45,6 @@ export function StudentTeamPage() {
 
   useEffect(() => {
     void load()
-    // Classmates to invite. Falls back silently — a student may not be able to
-    // list others, in which case they can still be invited by id.
     void fetchStudents({}).then((page) => setClassmates(page.data)).catch(() => undefined)
   }, [])
 
@@ -68,6 +63,7 @@ export function StudentTeamPage() {
         is_team: projectForm.is_team,
         team_name: projectForm.team_name || undefined,
       })
+      setIsProjectModalOpen(false)
       announce(
         projectForm.is_team
           ? 'Team created. Invite members, then request a supervisor.'
@@ -90,7 +86,8 @@ export function StudentTeamPage() {
       })
       setInviteId('')
       setInviteMessage('')
-      announce('Invitation sent.')
+      setIsInviteModalOpen(false)
+      announce('Invitation sent successfully.')
       await load()
     } catch (err) {
       setError(extractError(err, 'Could not send the invitation.'))
@@ -119,259 +116,401 @@ export function StudentTeamPage() {
       return
     }
 
-    setError(null)
-
     try {
       await removeMember(studentId)
       announce(isSelf ? 'You have left the team.' : 'Member removed.')
       await load()
     } catch (err) {
-      setError(extractError(err, 'Could not update the team.'))
+      setError(extractError(err, 'Could not remove member.'))
     }
   }
 
   async function handleTransfer(studentId: number) {
-    setError(null)
+    if (!window.confirm('Transfer team leadership to this student?')) {
+      return
+    }
 
     try {
       await transferLead(studentId)
-      announce('Team lead transferred.')
+      announce('Leadership transferred.')
       await load()
     } catch (err) {
-      setError(extractError(err, 'Could not transfer the lead.'))
+      setError(extractError(err, 'Could not transfer leadership.'))
     }
   }
 
-  const openInvitations = invitations.filter((invitation) => invitation.is_actionable)
+  const openInvitations = invitations.filter((i) => i.status === 'pending')
 
   return (
     <div className="space-y-6 animate-[fadeRise_500ms_ease-out]">
-      <header>
-        <h1 className="font-[family-name:var(--font-display)] text-4xl text-[var(--color-sea-deep)]">
-          My team
-        </h1>
-        <p className="mt-2 max-w-2xl text-[var(--color-ink-muted)]">
-          Start a project on your own or with a team, then ask a supervisor to
-          take it on.
-        </p>
-      </header>
+      <div className="flex flex-wrap items-center justify-between gap-4">
+        <div>
+          <h1 className="text-3xl font-bold text-slate-900 tracking-tight">My Team & Project</h1>
+          <p className="mt-1 text-slate-500">
+            Form your team, invite peers, and assemble members before requesting a supervisor.
+          </p>
+        </div>
+        {team === null ? (
+          <button
+            type="button"
+            onClick={() => setIsProjectModalOpen(true)}
+            className="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-700 active:bg-blue-800"
+          >
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 4v16m8-8H4" />
+            </svg>
+            Start a Project
+          </button>
+        ) : (
+          team.is_lead &&
+          team.member_count < team.max_members && (
+            <button
+              type="button"
+              onClick={() => setIsInviteModalOpen(true)}
+              className="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-700 active:bg-blue-800"
+            >
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
+              </svg>
+              Invite Member
+            </button>
+          )
+        )}
+      </div>
 
-      {error && <p className="text-[var(--color-danger)]">{error}</p>}
-      {success && <p className="text-[var(--color-success)]">{success}</p>}
+      {error && (
+        <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm font-medium text-red-700">
+          {error}
+        </div>
+      )}
+      {success && (
+        <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-sm font-medium text-emerald-800">
+          {success}
+        </div>
+      )}
 
-      {/* Invitations first: someone is waiting on an answer. */}
+      {/* Invitations Alert */}
       {openInvitations.length > 0 && (
-        <section className="rounded-xl border border-[var(--color-sea)] bg-[var(--color-sea-soft)] p-5">
-          <h2 className="font-semibold text-[var(--color-sea-deep)]">
-            You have been invited to a team
-          </h2>
-          <ul className="mt-3 grid gap-3">
+        <div className="rounded-2xl border border-blue-200 bg-blue-50/70 p-5 shadow-sm">
+          <div className="flex items-center gap-2 text-blue-900 font-bold text-base">
+            <svg className="w-5 h-5 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+            </svg>
+            Pending Team Invitations ({openInvitations.length})
+          </div>
+          <ul className="mt-3 grid gap-3 sm:grid-cols-2">
             {openInvitations.map((invitation) => (
               <li
                 key={invitation.id}
-                className="flex flex-wrap items-center justify-between gap-3 rounded-lg bg-[var(--color-surface)] px-4 py-3"
+                className="flex flex-col justify-between rounded-xl border border-blue-100 bg-white p-4 shadow-sm"
               >
-                <span className="min-w-0">
-                  <span className="font-medium">{invitation.team.name}</span>
-                  <span className="block text-sm text-[var(--color-ink-muted)]">
-                    {invitation.invited_by} · {invitation.team.member_count} member
-                    {invitation.team.member_count === 1 ? '' : 's'}
-                    {invitation.message && ` · “${invitation.message}”`}
-                  </span>
-                </span>
-                <span className="flex gap-3 text-sm">
-                  <button
-                    type="button"
-                    onClick={() => void respond(invitation, true)}
-                    className="rounded-lg bg-[var(--color-sea)] px-3 py-2 font-semibold text-[var(--color-on-brand)]"
-                  >
-                    Accept
-                  </button>
+                <div>
+                  <p className="font-bold text-slate-900">{invitation.team.name}</p>
+                  <p className="text-xs text-slate-500 mt-1">
+                    Invited by <span className="font-semibold text-slate-700">{invitation.invited_by}</span> · {invitation.team.member_count} member(s)
+                  </p>
+                  {invitation.message && (
+                    <p className="mt-2 text-xs italic text-slate-600 bg-slate-50 p-2 rounded-lg border border-slate-100">
+                      &ldquo;{invitation.message}&rdquo;
+                    </p>
+                  )}
+                </div>
+                <div className="mt-4 flex gap-2 justify-end border-t border-slate-100 pt-3">
                   <button
                     type="button"
                     onClick={() => void respond(invitation, false)}
-                    className="text-[var(--color-danger)] hover:underline"
+                    className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-semibold text-red-600 hover:bg-red-50 transition"
                   >
                     Decline
                   </button>
-                </span>
+                  <button
+                    type="button"
+                    onClick={() => void respond(invitation, true)}
+                    className="rounded-lg bg-blue-600 px-4 py-1.5 text-xs font-semibold text-white hover:bg-blue-700 transition"
+                  >
+                    Accept & Join
+                  </button>
+                </div>
               </li>
             ))}
           </ul>
-        </section>
+        </div>
       )}
 
       {isLoading ? (
-        <p className="text-[var(--color-ink-muted)]">Loading…</p>
+        <div className="rounded-xl border border-slate-200 bg-white py-12 text-center text-slate-400 shadow-sm">
+          Loading team workspace…
+        </div>
       ) : team === null ? (
-        <section className="max-w-lg rounded-xl border border-[var(--color-paper-deep)] bg-[var(--color-surface)] p-6">
-          <h2 className="font-[family-name:var(--font-display)] text-2xl text-[var(--color-sea-deep)]">
-            Start a project
-          </h2>
-          <p className="mt-2 text-sm text-[var(--color-ink-muted)]">
-            You do not have a team yet. Starting a team project makes you its
-            lead.
+        <div className="rounded-2xl border border-dashed border-slate-300 bg-white p-12 text-center shadow-sm">
+          <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-blue-50 text-blue-600">
+            <svg className="w-7 h-7" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+            </svg>
+          </div>
+          <h2 className="mt-4 text-xl font-bold text-slate-900">You do not have an active team yet</h2>
+          <p className="mt-1 text-sm text-slate-500 max-w-md mx-auto">
+            You can form a group project with classmates (4–6 students) or register an individual capstone project.
           </p>
+          <button
+            type="button"
+            onClick={() => setIsProjectModalOpen(true)}
+            className="mt-6 inline-flex items-center gap-2 rounded-xl bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-blue-700 transition"
+          >
+            Start a Project Now
+          </button>
+        </div>
+      ) : (
+        <div className="space-y-6">
+          {/* Team Overview Card */}
+          <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+            <div className="flex flex-wrap items-center justify-between gap-4">
+              <div>
+                <span className="text-xs font-bold uppercase tracking-wider text-blue-600">Team Workspace</span>
+                <h2 className="text-2xl font-bold text-slate-900 mt-0.5">{team.name}</h2>
+                <div className="mt-2 flex flex-wrap items-center gap-3 text-sm">
+                  <span className="inline-flex items-center rounded-md bg-blue-50 px-2.5 py-1 text-xs font-semibold text-blue-700 border border-blue-100">
+                    {team.member_count} of {team.min_members}–{team.max_members} Members
+                  </span>
+                  {team.supervisor ? (
+                    <span className="inline-flex items-center gap-1.5 text-emerald-700 font-medium text-xs">
+                      <span className="h-2 w-2 rounded-full bg-emerald-500"></span>
+                      Supervised by {team.supervisor.name}
+                    </span>
+                  ) : (
+                    <span className="inline-flex items-center gap-1.5 text-amber-700 font-medium text-xs">
+                      <span className="h-2 w-2 rounded-full bg-amber-500"></span>
+                      No supervisor assigned yet
+                    </span>
+                  )}
+                </div>
+              </div>
 
-          <form onSubmit={handleCreate} className="mt-4 grid gap-3">
+              {team.is_lead && team.member_count < team.max_members && (
+                <button
+                  type="button"
+                  onClick={() => setIsInviteModalOpen(true)}
+                  className="rounded-xl bg-blue-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-blue-700 transition"
+                >
+                  + Invite Member
+                </button>
+              )}
+            </div>
+
+            {team.member_count < team.min_members && (
+              <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50/80 p-3.5 text-xs font-medium text-amber-900 flex items-center gap-2.5">
+                <svg className="w-5 h-5 text-amber-600 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                </svg>
+                <span>
+                  This team needs at least {team.min_members} members before you can send a formal request to a faculty supervisor.
+                </span>
+              </div>
+            )}
+          </div>
+
+          {/* Members Table */}
+          <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+            <div className="border-b border-slate-200 bg-slate-50/80 px-6 py-4">
+              <h3 className="text-sm font-bold uppercase tracking-wider text-slate-700">Team Roster</h3>
+            </div>
+            <table className="w-full text-left text-sm">
+              <thead className="border-b border-slate-200 bg-slate-50 text-xs font-semibold uppercase tracking-wider text-slate-600">
+                <tr>
+                  <th className="px-6 py-3.5">Student Member</th>
+                  <th className="px-6 py-3.5">Registration No.</th>
+                  <th className="px-6 py-3.5">Role</th>
+                  <th className="px-6 py-3.5 text-right">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100 bg-white">
+                {team.members.map((member) => {
+                  const isSelf = member.name === user?.name
+                  return (
+                    <tr key={member.student_id} className="hover:bg-blue-50/30 transition">
+                      <td className="px-6 py-4 font-semibold text-slate-900">
+                        {member.name} {isSelf && <span className="text-xs font-normal text-slate-400">(You)</span>}
+                      </td>
+                      <td className="px-6 py-4 font-mono text-xs text-slate-600">
+                        {member.registration_number}
+                      </td>
+                      <td className="px-6 py-4">
+                        {member.is_leader ? (
+                          <span className="inline-flex items-center rounded-full bg-blue-50 px-2.5 py-0.5 text-xs font-bold text-blue-700 border border-blue-200">
+                            Team Lead
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-medium text-slate-600">
+                            Member
+                          </span>
+                        )}
+                      </td>
+                      <td className="px-6 py-4 text-right whitespace-nowrap">
+                        <div className="inline-flex items-center gap-2">
+                          {team.is_lead && !member.is_leader && (
+                            <button
+                              type="button"
+                              onClick={() => void handleTransfer(member.student_id)}
+                              className="rounded-lg border border-slate-200 px-3 py-1 text-xs font-semibold text-slate-700 hover:bg-slate-50 transition"
+                            >
+                              Transfer Lead
+                            </button>
+                          )}
+                          {(team.is_lead || isSelf) && !member.is_leader && (
+                            <button
+                              type="button"
+                              onClick={() => void handleRemove(member.student_id, isSelf)}
+                              className="rounded-lg border border-red-200 px-3 py-1 text-xs font-semibold text-red-600 hover:bg-red-50 transition"
+                            >
+                              {isSelf ? 'Leave Team' : 'Remove'}
+                            </button>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+          </div>
+
+          {/* Pending Invitations list */}
+          {team.pending_invitations.length > 0 && (
+            <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+              <h3 className="text-xs font-bold uppercase tracking-wider text-slate-500 mb-3">
+                Outgoing Invitations Awaiting Response ({team.pending_invitations.length})
+              </h3>
+              <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+                {team.pending_invitations.map((invite) => (
+                  <div key={invite.id} className="rounded-lg border border-slate-100 bg-slate-50 p-3 text-xs">
+                    <p className="font-semibold text-slate-800">{invite.name}</p>
+                    <p className="text-slate-500 font-mono mt-0.5">{invite.registration_number}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Modal: Create Project / Team */}
+      <Modal
+        isOpen={isProjectModalOpen}
+        onClose={() => setIsProjectModalOpen(false)}
+        title="Start a Project"
+        subtitle="Initialize your final year project workspace."
+      >
+        <form onSubmit={handleCreate} className="space-y-4">
+          <label className="block space-y-1.5 text-sm font-medium text-slate-700">
+            <span>Project Title</span>
             <input
               required
-              placeholder="Project title"
+              placeholder="e.g. Distributed Sensor Network for Agriculture"
               value={projectForm.title}
               onChange={(e) => setProjectForm((p) => ({ ...p, title: e.target.value }))}
-              className="rounded-lg border border-[var(--color-paper-deep)] px-3 py-2.5"
+              className="w-full rounded-xl border border-slate-300 bg-white px-3.5 py-2.5 text-slate-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
             />
+          </label>
 
-            <label className="flex items-center gap-2 text-sm">
+          <div className="rounded-xl border border-slate-200 bg-slate-50/70 p-4">
+            <label className="flex items-center gap-3 text-sm font-semibold text-slate-800 cursor-pointer select-none">
               <input
                 type="checkbox"
                 checked={projectForm.is_team}
                 onChange={(e) => setProjectForm((p) => ({ ...p, is_team: e.target.checked }))}
+                className="rounded border-slate-300 text-blue-600 focus:ring-blue-500 h-4 w-4"
               />
-              <span>This is a team project</span>
+              <span>This is a Group Project (4–6 students)</span>
             </label>
+            <p className="text-xs text-slate-500 mt-1 pl-7">
+              Uncheck if this is an individual project where only you will contribute.
+            </p>
+          </div>
 
-            {projectForm.is_team && (
+          {projectForm.is_team && (
+            <label className="block space-y-1.5 text-sm font-medium text-slate-700">
+              <span>Team Name (Optional)</span>
               <input
-                placeholder="Team name (defaults to the project title)"
+                placeholder="Defaults to project title if left blank"
                 value={projectForm.team_name}
                 onChange={(e) => setProjectForm((p) => ({ ...p, team_name: e.target.value }))}
-                className="rounded-lg border border-[var(--color-paper-deep)] px-3 py-2.5"
+                className="w-full rounded-xl border border-slate-300 bg-white px-3.5 py-2.5 text-slate-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
               />
-            )}
+            </label>
+          )}
 
+          <div className="mt-6 flex justify-end gap-3 border-t border-slate-100 pt-4">
+            <button
+              type="button"
+              onClick={() => setIsProjectModalOpen(false)}
+              className="rounded-xl border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50 transition"
+            >
+              Cancel
+            </button>
             <button
               type="submit"
-              className="rounded-lg bg-[var(--color-sea)] px-4 py-2.5 font-semibold text-[var(--color-on-brand)] transition hover:bg-[var(--color-sea-deep)]"
+              className="rounded-xl bg-blue-600 px-5 py-2 text-sm font-semibold text-white shadow-sm hover:bg-blue-700 transition"
             >
-              Create project
+              Create Project
             </button>
-          </form>
-        </section>
-      ) : (
-        <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_340px]">
-          <section className="rounded-xl border border-[var(--color-paper-deep)] bg-[var(--color-surface)]/70 p-5">
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <h2 className="font-semibold">{team.name}</h2>
-              <span className="text-sm text-[var(--color-ink-muted)] tabular-nums">
-                {team.member_count} of {team.min_members}–{team.max_members} members
-              </span>
-            </div>
+          </div>
+        </form>
+      </Modal>
 
-            {team.member_count < team.min_members && (
-              <p className="mt-2 rounded-lg bg-[var(--tint-amber)] px-3 py-2 text-sm text-[var(--color-amber)]">
-                A team needs at least {team.min_members} members before it can
-                request a supervisor.
-              </p>
-            )}
+      {/* Modal: Invite Member */}
+      <Modal
+        isOpen={isInviteModalOpen}
+        onClose={() => setIsInviteModalOpen(false)}
+        title="Invite Classmate"
+        subtitle="Send an official invitation to join your final year project team."
+      >
+        <form onSubmit={handleInvite} className="space-y-4">
+          <label className="block space-y-1.5 text-sm font-medium text-slate-700">
+            <span>Select Student</span>
+            <select
+              required
+              value={inviteId}
+              onChange={(e) => setInviteId(e.target.value)}
+              className="w-full rounded-xl border border-slate-300 bg-white px-3.5 py-2.5 text-slate-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
+            >
+              <option value="">Choose a classmate from your department</option>
+              {classmates.map((student) => (
+                <option key={student.id} value={student.id}>
+                  {student.name} ({student.registration_number})
+                </option>
+              ))}
+            </select>
+          </label>
 
-            {team.supervisor && (
-              <p className="mt-2 text-sm text-[var(--color-success)]">
-                Supervised by {team.supervisor.name}.
-              </p>
-            )}
+          <label className="block space-y-1.5 text-sm font-medium text-slate-700">
+            <span>Invitation Note (Optional)</span>
+            <textarea
+              rows={3}
+              placeholder="Hi! Would you like to join our final year project on this topic?"
+              value={inviteMessage}
+              onChange={(e) => setInviteMessage(e.target.value)}
+              className="w-full rounded-xl border border-slate-300 bg-white px-3.5 py-2.5 text-slate-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
+            />
+          </label>
 
-            <ul className="mt-4 grid gap-2">
-              {team.members.map((member) => {
-                const isSelf = member.name === user?.name
-
-                return (
-                  <li
-                    key={member.student_id}
-                    className="flex flex-wrap items-center justify-between gap-2 rounded-lg bg-[var(--color-paper)] px-3 py-2 text-sm"
-                  >
-                    <span>
-                      <span className="font-medium">{member.name}</span>
-                      {member.is_leader && (
-                        <span className="ml-2 inline-flex rounded-md bg-[var(--color-sea-soft)] px-2 py-0.5 text-xs font-semibold text-[var(--color-sea-deep)]">
-                          Lead
-                        </span>
-                      )}
-                      <span className="block text-[var(--color-ink-muted)]">
-                        {member.registration_number}
-                      </span>
-                    </span>
-
-                    <span className="flex gap-3">
-                      {team.is_lead && !member.is_leader && (
-                        <button
-                          type="button"
-                          onClick={() => void handleTransfer(member.student_id)}
-                          className="text-[var(--color-sea)] hover:underline"
-                        >
-                          Make lead
-                        </button>
-                      )}
-                      {(team.is_lead || isSelf) && !member.is_leader && (
-                        <button
-                          type="button"
-                          onClick={() => void handleRemove(member.student_id, isSelf)}
-                          className="text-[var(--color-danger)] hover:underline"
-                        >
-                          {isSelf ? 'Leave' : 'Remove'}
-                        </button>
-                      )}
-                    </span>
-                  </li>
-                )
-              })}
-            </ul>
-
-            {team.pending_invitations.length > 0 && (
-              <>
-                <h3 className="mt-5 text-sm font-semibold">Awaiting a reply</h3>
-                <ul className="mt-2 grid gap-1 text-sm text-[var(--color-ink-muted)]">
-                  {team.pending_invitations.map((invite) => (
-                    <li key={invite.id}>
-                      {invite.name} ({invite.registration_number})
-                    </li>
-                  ))}
-                </ul>
-              </>
-            )}
-          </section>
-
-          {team.is_lead && team.member_count < team.max_members && (
-            <section className="rounded-xl border border-[var(--color-paper-deep)] bg-[var(--color-surface)] p-5">
-              <h2 className="font-semibold">Invite a member</h2>
-              <p className="mt-1 text-sm text-[var(--color-ink-muted)]">
-                They join by accepting — invitations expire if left unanswered.
-              </p>
-
-              <form onSubmit={handleInvite} className="mt-4 grid gap-3">
-                <select
-                  required
-                  value={inviteId}
-                  onChange={(e) => setInviteId(e.target.value)}
-                  className="rounded-lg border border-[var(--color-paper-deep)] px-3 py-2.5"
-                >
-                  <option value="">Choose a classmate</option>
-                  {classmates.map((student) => (
-                    <option key={student.id} value={student.id}>
-                      {student.name} ({student.registration_number})
-                    </option>
-                  ))}
-                </select>
-
-                <textarea
-                  rows={2}
-                  placeholder="Message (optional)"
-                  value={inviteMessage}
-                  onChange={(e) => setInviteMessage(e.target.value)}
-                  className="rounded-lg border border-[var(--color-paper-deep)] px-3 py-2.5"
-                />
-
-                <button
-                  type="submit"
-                  className="rounded-lg bg-[var(--color-sea)] px-4 py-2.5 font-semibold text-[var(--color-on-brand)] transition hover:bg-[var(--color-sea-deep)]"
-                >
-                  Send invitation
-                </button>
-              </form>
-            </section>
-          )}
-        </div>
-      )}
+          <div className="mt-6 flex justify-end gap-3 border-t border-slate-100 pt-4">
+            <button
+              type="button"
+              onClick={() => setIsInviteModalOpen(false)}
+              className="rounded-xl border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50 transition"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={!inviteId}
+              className="rounded-xl bg-blue-600 px-5 py-2 text-sm font-semibold text-white shadow-sm hover:bg-blue-700 disabled:opacity-60 transition"
+            >
+              Send Invitation
+            </button>
+          </div>
+        </form>
+      </Modal>
     </div>
   )
 }

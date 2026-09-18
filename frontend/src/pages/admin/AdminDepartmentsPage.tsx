@@ -7,6 +7,7 @@ import {
   updateDepartment,
   type DepartmentOption,
 } from '../../api/admin'
+import { Modal } from '../../components/Modal'
 
 const emptyForm = { name: '', code: '', description: '' }
 
@@ -14,6 +15,7 @@ export function AdminDepartmentsPage() {
   const [departments, setDepartments] = useState<DepartmentOption[]>([])
   const [form, setForm] = useState(emptyForm)
   const [editingId, setEditingId] = useState<number | null>(null)
+  const [isModalOpen, setIsModalOpen] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
   const [isSaving, setIsSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -35,6 +37,14 @@ export function AdminDepartmentsPage() {
     void load()
   }, [])
 
+  function openCreate() {
+    setEditingId(null)
+    setForm(emptyForm)
+    setError(null)
+    setSuccess(null)
+    setIsModalOpen(true)
+  }
+
   function startEdit(department: DepartmentOption) {
     setEditingId(department.id)
     setForm({
@@ -44,9 +54,11 @@ export function AdminDepartmentsPage() {
     })
     setSuccess(null)
     setError(null)
+    setIsModalOpen(true)
   }
 
-  function resetForm() {
+  function closeModal() {
+    setIsModalOpen(false)
     setEditingId(null)
     setForm(emptyForm)
   }
@@ -65,7 +77,7 @@ export function AdminDepartmentsPage() {
         await createDepartment(form)
         setSuccess('Department created.')
       }
-      resetForm()
+      closeModal()
       await load()
     } catch (err) {
       setError(extractError(err, 'Could not save department.'))
@@ -85,7 +97,7 @@ export function AdminDepartmentsPage() {
       await deleteDepartment(id)
       setSuccess('Department deleted.')
       if (editingId === id) {
-        resetForm()
+        closeModal()
       }
       await load()
     } catch (err) {
@@ -94,118 +106,92 @@ export function AdminDepartmentsPage() {
   }
 
   return (
-    <div className="space-y-6">
-      <header>
-        <h1 className="font-[family-name:var(--font-display)] text-4xl text-[var(--color-sea-deep)]">
-          Departments
-        </h1>
-        <p className="mt-2 text-[var(--color-ink-muted)]">
-          Create departments and use them when adding teachers and students.
-        </p>
-      </header>
+    <div className="space-y-6 animate-[fadeRise_500ms_ease-out]">
+      <div className="flex flex-wrap items-center justify-between gap-4">
+        <div>
+          <h1 className="text-3xl font-bold text-slate-900 tracking-tight">Departments</h1>
+          <p className="mt-1 text-slate-500">
+            Create departments and use them when organizing teachers, students, and project tracks.
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={openCreate}
+          className="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-700 active:bg-blue-800"
+        >
+          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 4v16m8-8H4" />
+          </svg>
+          Add Department
+        </button>
+      </div>
 
-      {error && <p className="text-[var(--color-danger)]">{error}</p>}
-      {success && <p className="text-[var(--color-success)]">{success}</p>}
+      {error && (
+        <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm font-medium text-red-700">
+          {error}
+        </div>
+      )}
+      {success && (
+        <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-sm font-medium text-emerald-800">
+          {success}
+        </div>
+      )}
 
-      <div className="grid gap-6 xl:grid-cols-[1fr_1.2fr]">
-        <form onSubmit={handleSubmit} className="rounded-xl border border-[var(--color-paper-deep)] bg-[var(--color-surface)]/80 p-5">
-          <h2 className="font-[family-name:var(--font-display)] text-2xl text-[var(--color-sea-deep)]">
-            {editingId ? 'Edit department' : 'Add department'}
-          </h2>
-
-          <div className="mt-4 space-y-3">
-            <label className="block space-y-1 text-sm">
-              <span className="text-[var(--color-ink-muted)]">Name</span>
-              <input
-                required
-                value={form.name}
-                onChange={(e) => setForm((prev) => ({ ...prev, name: e.target.value }))}
-                className="w-full rounded-lg border border-[var(--color-paper-deep)] px-3 py-2.5"
-                placeholder="Computer Science"
-              />
-            </label>
-            <label className="block space-y-1 text-sm">
-              <span className="text-[var(--color-ink-muted)]">Code</span>
-              <input
-                required
-                value={form.code}
-                onChange={(e) => setForm((prev) => ({ ...prev, code: e.target.value }))}
-                className="w-full rounded-lg border border-[var(--color-paper-deep)] px-3 py-2.5"
-                placeholder="CS"
-              />
-            </label>
-            <label className="block space-y-1 text-sm">
-              <span className="text-[var(--color-ink-muted)]">Description</span>
-              <textarea
-                value={form.description}
-                onChange={(e) => setForm((prev) => ({ ...prev, description: e.target.value }))}
-                className="min-h-24 w-full rounded-lg border border-[var(--color-paper-deep)] px-3 py-2.5"
-              />
-            </label>
-          </div>
-
-          <div className="mt-4 flex gap-2">
-            <button
-              type="submit"
-              disabled={isSaving}
-              className="rounded-lg bg-[var(--color-sea)] px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-70"
-            >
-              {isSaving ? 'Saving…' : editingId ? 'Update' : 'Create'}
-            </button>
-            {editingId && (
-              <button
-                type="button"
-                onClick={resetForm}
-                className="rounded-lg border border-[var(--color-paper-deep)] px-4 py-2.5 text-sm"
-              >
-                Cancel
-              </button>
-            )}
-          </div>
-        </form>
-
-        <div className="overflow-hidden rounded-xl border border-[var(--color-paper-deep)] bg-[var(--color-surface)]/80">
-          {isLoading ? (
-            <p className="px-4 py-6 text-[var(--color-ink-muted)]">Loading…</p>
-          ) : (
+      {/* Details Table */}
+      <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+        {isLoading ? (
+          <div className="py-12 text-center text-slate-400">Loading departments…</div>
+        ) : (
+          <div className="overflow-x-auto">
             <table className="w-full text-left text-sm">
-              <thead className="bg-[var(--color-paper-deep)]/60 text-[var(--color-ink-muted)]">
+              <thead className="border-b border-slate-200 bg-slate-50/80 text-xs font-semibold uppercase tracking-wider text-slate-600">
                 <tr>
-                  <th className="px-4 py-3 font-medium">Department</th>
-                  <th className="px-4 py-3 font-medium">Teachers</th>
-                  <th className="px-4 py-3 font-medium">Students</th>
-                  <th className="px-4 py-3 font-medium">Actions</th>
+                  <th className="px-6 py-4">Department</th>
+                  <th className="px-6 py-4">Code</th>
+                  <th className="px-6 py-4">Description</th>
+                  <th className="px-6 py-4">Teachers</th>
+                  <th className="px-6 py-4">Students</th>
+                  <th className="px-6 py-4 text-right">Actions</th>
                 </tr>
               </thead>
-              <tbody>
+              <tbody className="divide-y divide-slate-100 bg-white">
                 {departments.length === 0 ? (
                   <tr>
-                    <td colSpan={4} className="px-4 py-6 text-[var(--color-ink-muted)]">
-                      No departments yet. Create one to get started.
+                    <td colSpan={6} className="px-6 py-12 text-center text-slate-500">
+                      No departments yet. Click &quot;Add Department&quot; above to create one.
                     </td>
                   </tr>
                 ) : (
                   departments.map((department) => (
-                    <tr key={department.id} className="border-t border-[var(--color-paper-deep)]">
-                      <td className="px-4 py-3">
-                        <p className="font-semibold">{department.name}</p>
-                        <p className="text-[var(--color-ink-muted)]">{department.code}</p>
+                    <tr key={department.id} className="transition hover:bg-blue-50/30">
+                      <td className="px-6 py-4 font-semibold text-slate-900">{department.name}</td>
+                      <td className="px-6 py-4">
+                        <span className="inline-flex items-center rounded-md bg-blue-50 px-2.5 py-1 text-xs font-semibold text-blue-700 ring-1 ring-inset ring-blue-700/10">
+                          {department.code}
+                        </span>
                       </td>
-                      <td className="px-4 py-3">{department.teachers_count ?? 0}</td>
-                      <td className="px-4 py-3">{department.students_count ?? 0}</td>
-                      <td className="px-4 py-3">
-                        <div className="flex gap-2">
+                      <td className="px-6 py-4 text-slate-600 max-w-xs truncate">
+                        {department.description || <span className="text-slate-400 italic">None</span>}
+                      </td>
+                      <td className="px-6 py-4 font-medium text-slate-700">
+                        {department.teachers_count ?? 0}
+                      </td>
+                      <td className="px-6 py-4 font-medium text-slate-700">
+                        {department.students_count ?? 0}
+                      </td>
+                      <td className="px-6 py-4 text-right whitespace-nowrap">
+                        <div className="inline-flex items-center gap-2">
                           <button
                             type="button"
                             onClick={() => startEdit(department)}
-                            className="text-[var(--color-sea)] hover:underline"
+                            className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-semibold text-blue-600 hover:bg-blue-50 hover:border-blue-200 transition"
                           >
                             Edit
                           </button>
                           <button
                             type="button"
                             onClick={() => void handleDelete(department.id)}
-                            className="text-[var(--color-danger)] hover:underline"
+                            className="rounded-lg border border-red-200 px-3 py-1.5 text-xs font-semibold text-red-600 hover:bg-red-50 hover:border-red-300 transition"
                           >
                             Delete
                           </button>
@@ -216,9 +202,73 @@ export function AdminDepartmentsPage() {
                 )}
               </tbody>
             </table>
-          )}
-        </div>
+          </div>
+        )}
       </div>
+
+      {/* Modal Form */}
+      <Modal
+        isOpen={isModalOpen}
+        onClose={closeModal}
+        title={editingId ? 'Edit Department' : 'Add New Department'}
+        subtitle={
+          editingId
+            ? 'Update department details and codes.'
+            : 'Fill in details to register a new academic department.'
+        }
+      >
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <label className="block space-y-1.5 text-sm font-medium text-slate-700">
+            <span>Department Name</span>
+            <input
+              required
+              value={form.name}
+              onChange={(e) => setForm((prev) => ({ ...prev, name: e.target.value }))}
+              className="w-full rounded-xl border border-slate-300 bg-white px-3.5 py-2.5 text-slate-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
+              placeholder="e.g. Computer Science & Engineering"
+            />
+          </label>
+
+          <label className="block space-y-1.5 text-sm font-medium text-slate-700">
+            <span>Department Code</span>
+            <input
+              required
+              value={form.code}
+              onChange={(e) => setForm((prev) => ({ ...prev, code: e.target.value }))}
+              className="w-full rounded-xl border border-slate-300 bg-white px-3.5 py-2.5 text-slate-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
+              placeholder="e.g. CSE"
+            />
+          </label>
+
+          <label className="block space-y-1.5 text-sm font-medium text-slate-700">
+            <span>Description</span>
+            <textarea
+              rows={3}
+              value={form.description}
+              onChange={(e) => setForm((prev) => ({ ...prev, description: e.target.value }))}
+              className="w-full rounded-xl border border-slate-300 bg-white px-3.5 py-2.5 text-slate-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
+              placeholder="Brief overview of the department or programme..."
+            />
+          </label>
+
+          <div className="mt-6 flex justify-end gap-3 border-t border-slate-100 pt-4">
+            <button
+              type="button"
+              onClick={closeModal}
+              className="rounded-xl border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50 transition"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={isSaving}
+              className="rounded-xl bg-blue-600 px-5 py-2 text-sm font-semibold text-white shadow-sm hover:bg-blue-700 disabled:opacity-60 transition"
+            >
+              {isSaving ? 'Saving…' : editingId ? 'Update Department' : 'Create Department'}
+            </button>
+          </div>
+        </form>
+      </Modal>
     </div>
   )
 }

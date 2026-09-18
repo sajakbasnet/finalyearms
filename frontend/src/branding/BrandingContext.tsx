@@ -8,15 +8,34 @@ interface BrandingContextValue {
   branding: Branding
   /** False until the live response has been applied; cached values render immediately. */
   isResolved: boolean
+  setBranding: (branding: Branding) => void
+  reloadBranding: () => Promise<void>
 }
 
 const BrandingContext = createContext<BrandingContextValue | undefined>(undefined)
 
 export function BrandingProvider({ children }: { children: ReactNode }) {
-  const [branding, setBranding] = useState<Branding>(
+  const [branding, setBrandingState] = useState<Branding>(
     () => readCachedBranding() ?? defaultBranding,
   )
   const [isResolved, setIsResolved] = useState(false)
+
+  const updateBranding = (newBranding: Branding) => {
+    setBrandingState(newBranding)
+    applyBranding(newBranding)
+    writeCachedBranding(newBranding)
+  }
+
+  const reloadBranding = async () => {
+    try {
+      const live = await fetchBranding()
+      if (live) {
+        updateBranding(live)
+      }
+    } catch {
+      // Retain existing branding if offline
+    }
+  }
 
   useEffect(() => {
     let cancelled = false
@@ -26,9 +45,7 @@ export function BrandingProvider({ children }: { children: ReactNode }) {
         if (cancelled || !live) {
           return
         }
-        setBranding(live)
-        applyBranding(live)
-        writeCachedBranding(live)
+        updateBranding(live)
       })
       .catch(() => {
         // Keep whatever is already applied (cache or shipped defaults) — a
@@ -46,7 +63,7 @@ export function BrandingProvider({ children }: { children: ReactNode }) {
   }, [])
 
   return (
-    <BrandingContext.Provider value={{ branding, isResolved }}>
+    <BrandingContext.Provider value={{ branding, isResolved, setBranding: updateBranding, reloadBranding }}>
       {children}
     </BrandingContext.Provider>
   )

@@ -5,11 +5,13 @@ import { AuthProvider } from './contexts/AuthContext'
 import { AppLayout } from './layouts/AppLayout'
 import { AdminAssignmentsPage } from './pages/admin/AdminAssignmentsPage'
 import { AdminBatchesPage } from './pages/admin/AdminBatchesPage'
+import { AdminBrandingPage } from './pages/admin/AdminBrandingPage'
 import { AdminDepartmentsPage } from './pages/admin/AdminDepartmentsPage'
 import { AdminProposalsPage } from './pages/admin/AdminProposalsPage'
 import { AdminSessionsPage } from './pages/admin/AdminSessionsPage'
 import { AdminStudentsPage } from './pages/admin/AdminStudentsPage'
 import { AdminTeachersPage } from './pages/admin/AdminTeachersPage'
+import { AdminUsersPage } from './pages/admin/AdminUsersPage'
 import { CoordinatorProjectTypesPage } from './pages/coordinator/CoordinatorProjectTypesPage'
 import { CoordinatorTemplatesPage } from './pages/coordinator/CoordinatorTemplatesPage'
 import { DashboardPage } from './pages/DashboardPage'
@@ -56,11 +58,15 @@ export default function App() {
             {/* Institution Admin — accounts and organisational structure. */}
             <Route element={<ProtectedRoute roles={['institution_admin']} />}>
               <Route element={<AppLayout />}>
+                <Route path="/admin/users" element={<AdminUsersPage />} />
+                <Route path="/admin/branding" element={<AdminBrandingPage />} />
                 <Route path="/admin/departments" element={<AdminDepartmentsPage />} />
                 <Route path="/admin/teachers" element={<AdminTeachersPage />} />
                 <Route path="/admin/students" element={<AdminStudentsPage />} />
                 <Route path="/admin/batches" element={<AdminBatchesPage />} />
                 <Route path="/admin/sessions" element={<AdminSessionsPage />} />
+                <Route path="/admin/assignments" element={<AdminAssignmentsPage />} />
+                <Route path="/admin/proposals" element={<AdminProposalsPage />} />
               </Route>
             </Route>
 

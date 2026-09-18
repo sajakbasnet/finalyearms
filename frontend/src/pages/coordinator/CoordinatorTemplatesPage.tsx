@@ -126,62 +126,77 @@ export function CoordinatorTemplatesPage() {
         onSaved={announce}
       />
     )
-  }
-
-  return (
+  }  return (
     <div className="space-y-6 animate-[fadeRise_500ms_ease-out]">
-      <header className="flex flex-wrap items-start justify-between gap-4">
+      <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
-          <h1 className="font-[family-name:var(--font-display)] text-4xl text-[var(--color-sea-deep)]">
-            Activity templates
+          <h1 className="text-3xl font-bold text-slate-900 tracking-tight">
+            Activity Templates
           </h1>
-          <p className="mt-2 max-w-2xl text-[var(--color-ink-muted)]">
-            Reusable project timelines. Publishing freezes a version so projects
-            that adopt it keep a plan that cannot change underneath them — revise
-            by opening a new version.
+          <p className="mt-1 text-slate-500">
+            Reusable project timelines and milestones for student project tracks.
           </p>
         </div>
         <button
           type="button"
           onClick={() => setIsCreating(true)}
-          className="rounded-lg bg-[var(--color-sea)] px-4 py-2.5 font-semibold text-[var(--color-on-brand)] transition hover:bg-[var(--color-sea-deep)]"
+          className="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-700 active:bg-blue-800"
         >
-          New template
+          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 4v16m8-8H4" />
+          </svg>
+          New Template
         </button>
-      </header>
+      </div>
 
-      {error && <p className="text-[var(--color-danger)]">{error}</p>}
-      {success && <p className="text-[var(--color-success)]">{success}</p>}
+      {error && (
+        <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm font-medium text-red-700">
+          {error}
+        </div>
+      )}
+      {success && (
+        <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-sm font-medium text-emerald-800">
+          {success}
+        </div>
+      )}
 
-      <select
-        value={statusFilter}
-        onChange={(e) => setStatusFilter(e.target.value)}
-        className="rounded-lg border border-[var(--color-paper-deep)] bg-[var(--color-surface)] px-3 py-2.5"
-      >
-        <option value="">All statuses</option>
-        <option value="draft">Draft</option>
-        <option value="published">Published</option>
-        <option value="archived">Archived</option>
-      </select>
+      <div className="flex items-center gap-3 rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+        <label htmlFor="template-status-filter" className="text-sm font-medium text-slate-600">
+          Filter by Status:
+        </label>
+        <select
+          id="template-status-filter"
+          value={statusFilter}
+          onChange={(e) => setStatusFilter(e.target.value)}
+          className="rounded-xl border border-slate-300 bg-white px-3.5 py-2 text-sm text-slate-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
+        >
+          <option value="">All statuses</option>
+          <option value="draft">Draft</option>
+          <option value="published">Published</option>
+          <option value="archived">Archived</option>
+        </select>
+      </div>
 
       {isLoading ? (
-        <p className="text-[var(--color-ink-muted)]">Loading templates…</p>
+        <div className="rounded-xl border border-slate-200 bg-white py-12 text-center text-slate-400 shadow-sm">
+          Loading templates…
+        </div>
       ) : templates.length === 0 ? (
-        <p className="rounded-xl border border-[var(--color-paper-deep)] bg-[var(--color-surface)]/70 px-4 py-10 text-center text-[var(--color-ink-muted)]">
-          No templates yet. Create one, or clone a shipped default.
-        </p>
+        <div className="rounded-xl border border-slate-200 bg-white py-12 text-center text-slate-500 shadow-sm">
+          No templates found. Create one, or clone a shipped default.
+        </div>
       ) : (
-        <div className="grid gap-3">
+        <div className="grid gap-4">
           {templates.map((template) => (
             <article
               key={template.id}
-              className="rounded-xl border border-[var(--color-paper-deep)] bg-[var(--color-surface)]/70 p-5"
+              className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm transition hover:shadow-md"
             >
-              <div className="flex flex-wrap items-start justify-between gap-3">
+              <div className="flex flex-wrap items-start justify-between gap-4">
                 <div className="min-w-0">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <h2 className="font-semibold">{template.name}</h2>
-                    <span className="font-[family-name:var(--font-display)] text-sm text-[var(--color-ink-muted)] tabular-nums">
+                  <div className="flex flex-wrap items-center gap-2.5">
+                    <h2 className="text-xl font-bold text-slate-900">{template.name}</h2>
+                    <span className="font-mono text-xs font-semibold text-slate-500 bg-slate-100 px-2 py-0.5 rounded">
                       v{template.version}
                     </span>
                     <StatusChip
@@ -195,40 +210,40 @@ export function CoordinatorTemplatesPage() {
                       label={template.status_label}
                     />
                     {template.is_sequential && (
-                      <span className="inline-flex rounded-md bg-[var(--color-sea-soft)] px-2 py-1 text-xs font-semibold text-[var(--color-sea-deep)]">
-                        Sequential
+                      <span className="inline-flex rounded-full bg-blue-50 px-2.5 py-0.5 text-xs font-semibold text-blue-700 border border-blue-200">
+                        Sequential Milestones
                       </span>
                     )}
                     {template.is_default && (
-                      <span className="inline-flex rounded-md bg-[var(--tint-amber)] px-2 py-1 text-xs font-semibold text-[var(--color-amber)]">
-                        Shipped default
+                      <span className="inline-flex rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-medium text-slate-700">
+                        Platform Default
                       </span>
                     )}
                   </div>
 
-                  <p className="mt-1 text-sm text-[var(--color-ink-muted)]">
-                    {template.project_type?.name ?? 'No project type'} ·{' '}
+                  <p className="mt-2 text-sm text-slate-500">
+                    <span className="font-semibold text-slate-700">{template.project_type?.name ?? 'General'}</span> ·{' '}
                     {template.items.length} item{template.items.length === 1 ? '' : 's'}
                     {template.span_days !== null && ` · spans ${template.span_days} days`}
                   </p>
                 </div>
 
-                <div className="flex shrink-0 flex-wrap gap-3 text-sm">
+                <div className="flex shrink-0 flex-wrap items-center gap-2">
                   {template.is_editable ? (
                     <button
                       type="button"
                       onClick={() => setEditing(template)}
-                      className="text-[var(--color-sea)] hover:underline"
+                      className="rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-blue-700 transition shadow-sm"
                     >
-                      Edit &amp; publish
+                      Edit &amp; Publish
                     </button>
                   ) : (
                     <button
                       type="button"
                       onClick={() => setEditing(template)}
-                      className="text-[var(--color-sea)] hover:underline"
+                      className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 transition"
                     >
-                      View
+                      View Template
                     </button>
                   )}
 
@@ -236,16 +251,16 @@ export function CoordinatorTemplatesPage() {
                     <button
                       type="button"
                       onClick={() => void handleVersion(template)}
-                      className="text-[var(--color-sea)] hover:underline"
+                      className="rounded-lg border border-blue-200 bg-blue-50 px-3 py-1.5 text-xs font-semibold text-blue-700 hover:bg-blue-100 transition"
                     >
-                      New version
+                      New Version
                     </button>
                   )}
 
                   <button
                     type="button"
                     onClick={() => void handleClone(template)}
-                    className="text-[var(--color-sea)] hover:underline"
+                    className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 transition"
                   >
                     Clone
                   </button>
@@ -254,7 +269,7 @@ export function CoordinatorTemplatesPage() {
                     <button
                       type="button"
                       onClick={() => void handleArchive(template)}
-                      className="text-[var(--color-danger)] hover:underline"
+                      className="rounded-lg border border-red-200 px-3 py-1.5 text-xs font-semibold text-red-600 hover:bg-red-50 transition"
                     >
                       Archive
                     </button>

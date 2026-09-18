@@ -7,18 +7,14 @@ import {
   type IncomingRequest,
   type RequestInbox,
 } from '../../api/teacher'
+import { Modal } from '../../components/Modal'
 
-/**
- * Requests awaiting this supervisor.
- *
- * Capacity is shown alongside, and counted in projects rather than students,
- * because a supervisor carries several teams and a team is several people.
- */
 export function TeacherRequestsPage() {
   const [inbox, setInbox] = useState<RequestInbox | null>(null)
   const [isLoading, setIsLoading] = useState(true)
-  const [decliningId, setDecliningId] = useState<number | null>(null)
+  const [decliningRequest, setDecliningRequest] = useState<IncomingRequest | null>(null)
   const [note, setNote] = useState('')
+  const [isSaving, setIsSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState<string | null>(null)
 
@@ -46,28 +42,30 @@ export function TeacherRequestsPage() {
     }
 
     setError(null)
-
     try {
       await acceptRequest(request.id)
-      setSuccess('Accepted. The project is now yours to supervise.')
+      setSuccess('Accepted. The project is now assigned to you for supervision.')
       await load()
     } catch (err) {
-      // Capacity is re-checked at acceptance; it may have filled while waiting.
       setError(extractError(err, 'Could not accept the request.'))
     }
   }
 
-  async function handleDecline(request: IncomingRequest) {
+  async function handleDeclineConfirm() {
+    if (!decliningRequest) return
+    setIsSaving(true)
     setError(null)
 
     try {
-      await declineRequest(request.id, note || undefined)
-      setSuccess('Declined. The team can approach someone else.')
-      setDecliningId(null)
+      await declineRequest(decliningRequest.id, note || undefined)
+      setSuccess('Request declined. The team has been notified.')
+      setDecliningRequest(null)
       setNote('')
       await load()
     } catch (err) {
       setError(extractError(err, 'Could not decline the request.'))
+    } finally {
+      setIsSaving(false)
     }
   }
 
@@ -76,139 +74,182 @@ export function TeacherRequestsPage() {
 
   return (
     <div className="space-y-6 animate-[fadeRise_500ms_ease-out]">
-      <header>
-        <h1 className="font-[family-name:var(--font-display)] text-4xl text-[var(--color-sea-deep)]">
-          Supervision requests
-        </h1>
-        <p className="mt-2 max-w-2xl text-[var(--color-ink-muted)]">
-          Teams and individual students asking you to take their project on.
-        </p>
-      </header>
+      <div className="flex flex-wrap items-center justify-between gap-4">
+        <div>
+          <h1 className="text-3xl font-bold text-slate-900 tracking-tight">Supervision Requests</h1>
+          <p className="mt-1 text-slate-500">
+            Student teams asking you to take their final year project on.
+          </p>
+        </div>
+      </div>
 
       {meta && (
         <div
-          className={[
-            'rounded-xl border px-5 py-4',
-            atCapacity
-              ? 'border-[var(--color-danger)] bg-[var(--tint-danger)]'
-              : 'border-[var(--color-paper-deep)] bg-[var(--color-surface)]',
-          ].join(' ')}
+          className={`rounded-xl border p-5 shadow-sm bg-white ${
+            atCapacity ? 'border-red-200 bg-red-50/50' : 'border-slate-200'
+          }`}
         >
-          <p className="text-sm tabular-nums">
-            <span className="font-semibold">
-              {meta.active_projects} of {meta.max_projects} projects
-            </span>{' '}
-            <span className="text-[var(--color-ink-muted)]">
-              · {meta.remaining_capacity} slot
-              {meta.remaining_capacity === 1 ? '' : 's'} free
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div>
+              <span className="text-xs font-bold uppercase tracking-wider text-slate-500">
+                Supervision Workload
+              </span>
+              <p className="text-base font-bold text-slate-900 mt-0.5">
+                {meta.active_projects} of {meta.max_projects} Projects Supervised
+              </p>
+            </div>
+            <span
+              className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold ${
+                atCapacity
+                  ? 'bg-red-100 text-red-800'
+                  : 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+              }`}
+            >
+              {meta.remaining_capacity} free supervision slot{meta.remaining_capacity === 1 ? '' : 's'}
             </span>
-          </p>
+          </div>
           {atCapacity && (
-            <p className="mt-1 text-sm text-[var(--color-danger)]">
-              You are at capacity. Accepting will be refused until a project
-              completes or your limit is raised.
+            <p className="mt-2 text-xs font-medium text-red-600">
+              You are currently at your project limit. Acceptance will be restricted until an existing project finishes or your department quota is adjusted.
             </p>
           )}
         </div>
       )}
 
-      {error && <p className="text-[var(--color-danger)]">{error}</p>}
-      {success && <p className="text-[var(--color-success)]">{success}</p>}
+      {error && (
+        <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm font-medium text-red-700">
+          {error}
+        </div>
+      )}
+      {success && (
+        <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-sm font-medium text-emerald-800">
+          {success}
+        </div>
+      )}
 
       {isLoading ? (
-        <p className="text-[var(--color-ink-muted)]">Loading requests…</p>
+        <div className="rounded-xl border border-slate-200 bg-white py-12 text-center text-slate-400 shadow-sm">
+          Loading supervision requests…
+        </div>
       ) : (inbox?.data.length ?? 0) === 0 ? (
-        <p className="rounded-xl border border-[var(--color-paper-deep)] bg-[var(--color-surface)]/70 px-4 py-10 text-center text-[var(--color-ink-muted)]">
-          Nothing waiting on you.
-        </p>
+        <div className="rounded-xl border border-slate-200 bg-white py-12 text-center text-slate-500 shadow-sm">
+          No pending supervision requests at this time.
+        </div>
       ) : (
-        <div className="grid gap-3">
+        <div className="grid gap-4">
           {inbox?.data.map((request) => (
-            <article
+            <div
               key={request.id}
-              className="rounded-xl border border-[var(--color-paper-deep)] bg-[var(--color-surface)]/70 p-5"
+              className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm transition hover:shadow-md"
             >
-              <div className="flex flex-wrap items-start justify-between gap-3">
-                <div className="min-w-0">
-                  <h2 className="font-semibold">{request.project?.title}</h2>
-                  <p className="text-sm text-[var(--color-ink-muted)]">
+              <div className="flex flex-wrap items-start justify-between gap-4">
+                <div>
+                  <h2 className="text-xl font-bold text-slate-900">{request.project?.title}</h2>
+                  <p className="text-sm text-slate-500 mt-1">
                     {request.team
-                      ? `${request.team.name} · ${request.team.member_count} members`
+                      ? `${request.team.name} · ${request.team.member_count} member(s)`
                       : 'Individual project'}
-                    {request.requested_by && ` · asked by ${request.requested_by}`}
+                    {request.requested_by && ` · Requested by ${request.requested_by}`}
                   </p>
                 </div>
 
-                <div className="flex shrink-0 gap-3 text-sm">
+                <div className="flex items-center gap-2">
                   <button
                     type="button"
                     onClick={() => void handleAccept(request)}
-                    className="rounded-lg bg-[var(--color-sea)] px-3 py-2 font-semibold text-[var(--color-on-brand)] transition hover:bg-[var(--color-sea-deep)]"
+                    disabled={atCapacity}
+                    className="rounded-xl bg-blue-600 px-4 py-2 text-xs font-semibold text-white shadow-sm hover:bg-blue-700 disabled:opacity-50 transition"
                   >
-                    Accept
+                    Accept Team
                   </button>
                   <button
                     type="button"
-                    onClick={() => setDecliningId(request.id)}
-                    className="text-[var(--color-danger)] hover:underline"
+                    onClick={() => {
+                      setDecliningRequest(request)
+                      setNote('')
+                    }}
+                    className="rounded-xl border border-red-200 px-4 py-2 text-xs font-semibold text-red-600 hover:bg-red-50 transition"
                   >
                     Decline
                   </button>
                 </div>
               </div>
 
-              <blockquote className="mt-3 border-l-2 border-[var(--color-sea)] bg-[var(--color-paper)] px-4 py-3 text-sm">
-                {request.rationale}
-              </blockquote>
+              <div className="mt-4 rounded-xl border border-blue-100 bg-blue-50/50 p-4 text-sm text-slate-800">
+                <span className="font-semibold text-blue-900 block text-xs uppercase tracking-wider mb-1">
+                  Team Rationale & Goals:
+                </span>
+                <p className="italic">{request.rationale}</p>
+              </div>
 
               {request.team && (
-                <ul className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-sm text-[var(--color-ink-muted)]">
-                  {request.team.members.map((member) => (
-                    <li key={member.registration_number}>
-                      {member.name}
-                      {member.is_leader && ' (lead)'}
-                    </li>
-                  ))}
-                </ul>
-              )}
-
-              {decliningId === request.id && (
-                <div className="mt-4 border-t border-[var(--color-paper-deep)] pt-4">
-                  <label className="grid gap-1 text-sm">
-                    <span className="font-medium">Why? (optional, shown to the team)</span>
-                    <textarea
-                      rows={2}
-                      value={note}
-                      onChange={(e) => setNote(e.target.value)}
-                      placeholder="Already carrying too much this session."
-                      className="rounded-lg border border-[var(--color-paper-deep)] px-3 py-2.5"
-                    />
-                  </label>
-                  <div className="mt-3 flex gap-3">
-                    <button
-                      type="button"
-                      onClick={() => void handleDecline(request)}
-                      className="rounded-lg bg-[var(--color-danger)] px-3 py-2 text-sm font-semibold text-[var(--color-surface)]"
-                    >
-                      Confirm decline
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setDecliningId(null)
-                        setNote('')
-                      }}
-                      className="rounded-lg border border-[var(--color-paper-deep)] px-3 py-2 text-sm"
-                    >
-                      Cancel
-                    </button>
+                <div className="mt-4 border-t border-slate-100 pt-3">
+                  <span className="text-xs font-semibold uppercase tracking-wider text-slate-500 block mb-2">
+                    Team Members
+                  </span>
+                  <div className="flex flex-wrap gap-2">
+                    {request.team.members.map((member) => (
+                      <span
+                        key={member.registration_number}
+                        className="inline-flex items-center rounded-lg bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-800"
+                      >
+                        {member.name} {member.is_leader && '(Lead)'} · {member.registration_number}
+                      </span>
+                    ))}
                   </div>
                 </div>
               )}
-            </article>
+            </div>
           ))}
         </div>
       )}
+
+      {/* Modal: Decline Request */}
+      <Modal
+        isOpen={decliningRequest !== null}
+        onClose={() => setDecliningRequest(null)}
+        title="Decline Supervision Request"
+        subtitle={
+          decliningRequest
+            ? `Decline request from ${decliningRequest.team?.name ?? 'student'}.`
+            : undefined
+        }
+      >
+        <div className="space-y-4">
+          <p className="text-sm text-slate-600">
+            Declining allows the student group to select and approach another faculty supervisor.
+          </p>
+
+          <label className="block space-y-1.5 text-sm font-medium text-slate-700">
+            <span>Feedback / Reason for Students (Optional)</span>
+            <textarea
+              rows={3}
+              value={note}
+              onChange={(e) => setNote(e.target.value)}
+              placeholder="e.g. Current research focus is in another domain; reaching supervision limit for this semester."
+              className="w-full rounded-xl border border-slate-300 bg-white px-3.5 py-2.5 text-slate-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
+            />
+          </label>
+
+          <div className="mt-6 flex justify-end gap-3 border-t border-slate-100 pt-4">
+            <button
+              type="button"
+              onClick={() => setDecliningRequest(null)}
+              className="rounded-xl border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50 transition"
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              disabled={isSaving}
+              onClick={() => void handleDeclineConfirm()}
+              className="rounded-xl bg-red-600 px-5 py-2 text-sm font-semibold text-white shadow-sm hover:bg-red-700 disabled:opacity-60 transition"
+            >
+              {isSaving ? 'Declining…' : 'Confirm Decline'}
+            </button>
+          </div>
+        </div>
+      </Modal>
     </div>
   )
 }
