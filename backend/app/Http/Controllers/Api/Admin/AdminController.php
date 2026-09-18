@@ -16,8 +16,10 @@ use App\Http\Requests\Admin\UpdateStudentRequest;
 use App\Http\Requests\Admin\UpdateTeacherRequest;
 use App\Models\AcademicSession;
 use App\Models\Department;
+use App\Models\Role;
 use App\Models\Student;
 use App\Models\Teacher;
+use App\Models\User;
 use App\Services\AdminService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -392,6 +394,140 @@ final class AdminController extends Controller
                 'employee_id' => $teacher->employee_id,
                 'designation' => $teacher->designation,
             ] : null,
+        ];
+    }
+
+    public function roles(): JsonResponse
+    {
+        return response()->json([
+            'data' => $this->adminService->listRoles()->map(fn (Role $role) => [
+                'id' => $role->id,
+                'name' => $role->name,
+                'slug' => $role->slug,
+                'description' => $role->description,
+            ]),
+        ]);
+    }
+
+    public function users(Request $request): JsonResponse
+    {
+        $paginator = $this->adminService->listUsers(
+            filters: [
+                'role_slug' => $request->string('role')->toString() ?: null,
+                'department_id' => $request->integer('department_id') ?: null,
+                'search' => $request->string('search')->toString() ?: null,
+                'is_active' => $request->has('is_active') ? $request->boolean('is_active') : null,
+            ],
+            perPage: min($request->integer('per_page', 25), 100),
+        );
+
+        return response()->json([
+            'data' => collect($paginator->items())->map(fn (User $user) => $this->mapUser($user)),
+            'meta' => [
+                'current_page' => $paginator->currentPage(),
+                'last_page' => $paginator->lastPage(),
+                'per_page' => $paginator->perPage(),
+                'total' => $paginator->total(),
+            ],
+        ]);
+    }
+
+    public function storeUser(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'name' => ['required', 'string', 'max:255'],
+            'email' => ['required', 'string', 'email', 'max:255', 'unique:users,email'],
+            'phone' => ['nullable', 'string', 'max:25'],
+            'password' => ['required', 'string', 'min:8'],
+            'role_id' => ['required', 'integer', 'exists:roles,id'],
+            'is_active' => ['boolean'],
+            'department_id' => ['nullable', 'integer', 'exists:departments,id'],
+            'employee_id' => ['nullable', 'string', 'max:50'],
+            'designation' => ['nullable', 'string', 'max:100'],
+            'registration_number' => ['nullable', 'string', 'max:50'],
+            'roll_number' => ['nullable', 'string', 'max:50'],
+            'batch_id' => ['nullable', 'integer', 'exists:batches,id'],
+        ]);
+
+        $user = $this->adminService->createUser($validated);
+
+        return response()->json([
+            'message' => 'User created successfully.',
+            'data' => $this->mapUser($user),
+        ], 201);
+    }
+
+    public function updateUser(Request $request, User $user): JsonResponse
+    {
+        $validated = $request->validate([
+            'name' => ['required', 'string', 'max:255'],
+            'email' => ['required', 'string', 'email', 'max:255', 'unique:users,email,'.$user->id],
+            'phone' => ['nullable', 'string', 'max:25'],
+            'password' => ['nullable', 'string', 'min:8'],
+            'role_id' => ['nullable', 'integer', 'exists:roles,id'],
+            'is_active' => ['boolean'],
+            'department_id' => ['nullable', 'integer', 'exists:departments,id'],
+        ]);
+
+        $updated = $this->adminService->updateUser($user, $validated);
+
+        return response()->json([
+            'message' => 'User updated successfully.',
+            'data' => $this->mapUser($updated),
+        ]);
+    }
+
+    public function destroyUser(Request $request, User $user): JsonResponse
+    {
+        $this->adminService->deleteUser($user, (int) $request->user()?->id);
+
+        return response()->json([
+            'message' => 'User deleted successfully.',
+        ]);
+    }
+
+    public function toggleUserStatus(Request $request, User $user): JsonResponse
+    {
+        $updated = $this->adminService->toggleUserStatus($user, (int) $request->user()?->id);
+
+        return response()->json([
+            'message' => $updated->is_active ? 'User activated successfully.' : 'User deactivated successfully.',
+            'data' => $this->mapUser($updated),
+        ]);
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function mapUser(User $user): array
+    {
+        $dept = $user->teacher?->department ?? $user->student?->department;
+
+        return [
+            'id' => $user->id,
+            'name' => $user->name,
+            'email' => $user->email,
+            'phone' => $user->phone,
+            'is_active' => (bool) $user->is_active,
+            'role' => $user->role ? [
+                'id' => $user->role->id,
+                'name' => $user->role->name,
+                'slug' => $user->role->slug,
+                'description' => $user->role->description,
+            ] : null,
+            'department' => $dept ? [
+                'id' => $dept->id,
+                'name' => $dept->name,
+                'code' => $dept->code,
+            ] : null,
+            'details' => [
+                'employee_id' => $user->teacher?->employee_id,
+                'designation' => $user->teacher?->designation,
+                'registration_number' => $user->student?->registration_number,
+                'roll_number' => $user->student?->roll_number,
+                'batch' => $user->student?->batch?->name,
+            ],
+            'created_at' => $user->created_at?->toIso8601String(),
         ];
     }
 }

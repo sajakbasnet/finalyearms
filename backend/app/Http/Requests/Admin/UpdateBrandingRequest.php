@@ -19,13 +19,22 @@ final class UpdateBrandingRequest extends FormRequest
         return true;
     }
 
+    protected function prepareForValidation(): void
+    {
+        if (! $this->has('institution_name') || trim((string) $this->institution_name) === '') {
+            $this->merge([
+                'institution_name' => 'FYP Portal',
+            ]);
+        }
+    }
+
     /**
      * @return array<string, mixed>
      */
     public function rules(): array
     {
         return [
-            'institution_name' => ['required', 'string', 'max:255'],
+            'institution_name' => ['nullable', 'string', 'max:255'],
             'short_name' => ['nullable', 'string', 'max:60'],
             'tagline' => ['nullable', 'string', 'max:255'],
 

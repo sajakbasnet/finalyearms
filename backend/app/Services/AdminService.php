@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services;
 
+use App\Enums\UserRole;
 use App\Models\AcademicSession;
 use App\Models\Department;
 use App\Models\Project;
@@ -571,5 +572,220 @@ final readonly class AdminService
                 'academicSession',
             ]);
         });
+    }
+
+    /**
+     * @return Collection<int, Role>
+     */
+    public function listRoles(): Collection
+    {
+        $slugs = array_map(fn (UserRole $role): string => $role->value, UserRole::assignable());
+
+        return Role::query()
+            ->whereIn('slug', $slugs)
+            ->get();
+    }
+
+    /**
+     * @param  array{role_slug?: string|null, department_id?: int|null, search?: string|null, is_active?: bool|null}  $filters
+     */
+    public function listUsers(array $filters = [], int $perPage = 20): LengthAwarePaginator
+    {
+        $query = User::query()
+            ->with([
+                'role',
+                'teacher.department',
+                'student.department',
+                'student.batch',
+                'student.academicSession',
+            ])
+            ->latest('id');
+
+        if (! empty($filters['role_slug'])) {
+            $query->whereHas('role', function ($q) use ($filters): void {
+                $q->where('slug', $filters['role_slug']);
+            });
+        }
+
+        if (! empty($filters['department_id'])) {
+            $deptId = (int) $filters['department_id'];
+            $query->where(function ($q) use ($deptId): void {
+                $q->whereHas('teacher', fn ($tq) => $tq->where('department_id', $deptId))
+                    ->orWhereHas('student', fn ($sq) => $sq->where('department_id', $deptId));
+            });
+        }
+
+        if (isset($filters['is_active']) && $filters['is_active'] !== null) {
+            $query->where('is_active', (bool) $filters['is_active']);
+        }
+
+        if (! empty($filters['search'])) {
+            $search = $filters['search'];
+            $query->where(function ($q) use ($search): void {
+                $q->where('name', 'like', "%{$search}%")
+                    ->orWhere('email', 'like', "%{$search}%")
+                    ->orWhere('phone', 'like', "%{$search}%")
+                    ->orWhereHas('teacher', fn ($t) => $t->where('employee_id', 'like', "%{$search}%"))
+                    ->orWhereHas('student', fn ($s) => $s->where('registration_number', 'like', "%{$search}%"));
+            });
+        }
+
+        return $query->paginate($perPage);
+    }
+
+    /**
+     * @param  array<string, mixed>  $data
+     */
+    public function createUser(array $data): User
+    {
+        $role = Role::query()->findOrFail($data['role_id']);
+        $roleSlug = $role->slug;
+
+        return DB::transaction(function () use ($data, $role, $roleSlug): User {
+            $user = User::query()->create([
+                'role_id' => $role->id,
+                'name' => $data['name'],
+                'email' => $data['email'],
+                'phone' => $data['phone'] ?? null,
+                'password' => Hash::make($data['password']),
+                'email_verified_at' => now(),
+                'is_active' => $data['is_active'] ?? true,
+            ]);
+
+            if (in_array($roleSlug, [UserRole::Supervisor->value, UserRole::Coordinator->value], true)) {
+                $departmentId = $data['department_id'] ?? Department::query()->value('id');
+                if ($departmentId) {
+                    Teacher::query()->create([
+                        'user_id' => $user->id,
+                        'department_id' => $departmentId,
+                        'employee_id' => $data['employee_id'] ?? ('EMP-'.$user->id),
+                        'designation' => $data['designation'] ?? ($roleSlug === 'coordinator' ? 'Coordinator' : 'Supervisor'),
+                        'max_projects' => $data['max_projects'] ?? 5,
+                    ]);
+                }
+            } elseif ($roleSlug === UserRole::Student->value) {
+                $departmentId = $data['department_id'] ?? Department::query()->value('id');
+                $sessionId = $data['academic_session_id'] ?? AcademicSession::query()->where('is_active', true)->value('id') ?? AcademicSession::query()->value('id');
+                if ($departmentId && $sessionId) {
+                    Student::query()->create([
+                        'user_id' => $user->id,
+                        'department_id' => $departmentId,
+                        'academic_session_id' => $sessionId,
+                        'batch_id' => $data['batch_id'] ?? null,
+                        'registration_number' => $data['registration_number'] ?? ('STU-'.now()->year.'-'.$user->id),
+                        'roll_number' => $data['roll_number'] ?? null,
+                    ]);
+                }
+            }
+
+            return $user->fresh()->load([
+                'role',
+                'teacher.department',
+                'student.department',
+                'student.batch',
+                'student.academicSession',
+            ]);
+        });
+    }
+
+    /**
+     * @param  array<string, mixed>  $data
+     */
+    public function updateUser(User $user, array $data): User
+    {
+        return DB::transaction(function () use ($user, $data): User {
+            $userData = [
+                'name' => $data['name'],
+                'email' => $data['email'],
+                'phone' => $data['phone'] ?? null,
+            ];
+
+            if (isset($data['is_active'])) {
+                $userData['is_active'] = (bool) $data['is_active'];
+            }
+
+            if (! empty($data['password'])) {
+                $userData['password'] = Hash::make($data['password']);
+            }
+
+            if (! empty($data['role_id'])) {
+                $newRole = Role::query()->findOrFail($data['role_id']);
+                $userData['role_id'] = $newRole->id;
+            }
+
+            $user->update($userData);
+
+            if (! empty($data['department_id'])) {
+                if ($user->teacher) {
+                    $user->teacher->update(['department_id' => $data['department_id']]);
+                }
+                if ($user->student) {
+                    $user->student->update(['department_id' => $data['department_id']]);
+                }
+            }
+
+            return $user->fresh()->load([
+                'role',
+                'teacher.department',
+                'student.department',
+                'student.batch',
+                'student.academicSession',
+            ]);
+        });
+    }
+
+    public function deleteUser(User $user, int $currentUserId): void
+    {
+        if ($user->id === $currentUserId) {
+            throw ValidationException::withMessages([
+                'user' => ['You cannot delete your own admin account.'],
+            ]);
+        }
+
+        if ($user->teacher && $user->teacher->assignments()->where('is_active', true)->exists()) {
+            throw ValidationException::withMessages([
+                'user' => ['Cannot delete a supervisor with active student assignments. Please reassign their students first or deactivate the account.'],
+            ]);
+        }
+
+        if ($user->student && $user->student->projects()->exists()) {
+            throw ValidationException::withMessages([
+                'user' => ['Cannot delete a student who has an active project. Please deactivate the account instead.'],
+            ]);
+        }
+
+        DB::transaction(function () use ($user): void {
+            if ($user->teacher) {
+                $user->teacher->delete();
+            }
+            if ($user->student) {
+                $user->student->supervisorAssignment()->delete();
+                $user->student->delete();
+            }
+            $user->tokens()->delete();
+            $user->delete();
+        });
+    }
+
+    public function toggleUserStatus(User $user, int $currentUserId): User
+    {
+        if ($user->id === $currentUserId) {
+            throw ValidationException::withMessages([
+                'user' => ['You cannot deactivate your own admin account.'],
+            ]);
+        }
+
+        $user->is_active = ! $user->is_active;
+        $user->save();
+
+        if (! $user->is_active) {
+            $user->tokens()->delete();
+        }
+
+        return $user->fresh()->load([
+            'role',
+            'teacher.department',
+            'student.department',
+        ]);
     }
 }

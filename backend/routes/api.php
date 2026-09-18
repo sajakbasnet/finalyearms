@@ -86,6 +86,13 @@ Route::middleware('auth:sanctum')->group(function (): void {
         Route::put('/students/{student}', [AdminController::class, 'updateStudent'])->middleware('can:user.manage');
         Route::delete('/students/{student}', [AdminController::class, 'destroyStudent'])->middleware('can:user.manage');
 
+        Route::get('/roles', [AdminController::class, 'roles'])->middleware('can:user.view');
+        Route::get('/users', [AdminController::class, 'users'])->middleware('can:user.view');
+        Route::post('/users', [AdminController::class, 'storeUser'])->middleware('can:user.manage');
+        Route::put('/users/{user}', [AdminController::class, 'updateUser'])->middleware('can:user.manage');
+        Route::delete('/users/{user}', [AdminController::class, 'destroyUser'])->middleware('can:user.manage');
+        Route::patch('/users/{user}/status', [AdminController::class, 'toggleUserStatus'])->middleware('can:user.manage');
+
         // Coordinator territory: supervisor overrides and proposal oversight.
         Route::post('/students/{student}/assign-supervisor', [AdminController::class, 'assignSupervisor'])
             ->middleware('can:supervisor-assignment.manage');
